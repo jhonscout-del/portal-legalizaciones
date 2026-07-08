@@ -1,0 +1,179 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  SOLICITANTE
+  CONTABLE
+  ADMINISTRATIVO
+}
+
+enum TipoSolicitud {
+  VIATICOS
+  OPERACIONAL
+  GENERO_ERM
+}
+
+enum EstadoSolicitud {
+  BORRADOR
+  PENDIENTE
+  APROBADA
+  LEGALIZADA
+}
+
+enum SeccionRubro {
+  A_SOPORTE
+  B_FACTURA_RETENCION
+}
+
+model User {
+  id            Int      @id @default(autoincrement())
+  name          String
+  email         String   @unique
+  microsoftOid  String   @unique
+  role          Role     @default(SOLICITANTE)
+  createdAt     DateTime @default(now())
+
+  solicitudesCreadas   SolicitudRecurso[] @relation("SolicitudSolicitante")
+  vistosBuenoContable  SolicitudRecurso[] @relation("SolicitudVistoBuenoContable")
+  vistosBuenoAdmin     SolicitudRecurso[] @relation("SolicitudVistoBuenoAdmin")
+  legalizacionesCreadas Legalizacion[]    @relation("LegalizacionSolicitante")
+  informesViaje        InformeViaje[]     @relation("InformeElaboradoPor")
+}
+
+model BusinessUnit {
+  id       Int       @id @default(autoincrement())
+  code     String    @unique
+  name     String
+  donor    String
+  active   Boolean   @default(true)
+  projects Project[]
+}
+
+model Project {
+  id             Int      @id @default(autoincrement())
+  name           String
+  businessUnitId Int
+  businessUnit   BusinessUnit @relation(fields: [businessUnitId], references: [id])
+  encargado      String
+  active         Boolean  @default(true)
+
+  solicitudes    SolicitudRecurso[]
+  legalizaciones Legalizacion[]
+  informesViaje  InformeViaje[]
+}
+
+model SolicitudRecurso {
+  id              Int             @id @default(autoincrement())
+  tipo            TipoSolicitud
+  fecha           DateTime
+  aFavorDe        String
+  nitCc           String
+  direccion       String
+  telefono        String
+  porConceptoDe   String
+  projectId       Int
+  project         Project         @relation(fields: [projectId], references: [id])
+  cuentaBancariaNo String
+  entidadBancaria String
+  aNombreDe       String
+  cedulaNitTitular String
+  estado          EstadoSolicitud @default(BORRADOR)
+
+  solicitanteId   Int
+  solicitante     User            @relation("SolicitudSolicitante", fields: [solicitanteId], references: [id])
+
+  vistoBuenoContableId   Int?
+  vistoBuenoContable     User?    @relation("SolicitudVistoBuenoContable", fields: [vistoBuenoContableId], references: [id])
+  vistoBuenoContableAt   DateTime?
+
+  vistoBuenoAdminId      Int?
+  vistoBuenoAdmin        User?    @relation("SolicitudVistoBuenoAdmin", fields: [vistoBuenoAdminId], references: [id])
+  vistoBuenoAdminAt      DateTime?
+
+  createdAt       DateTime        @default(now())
+
+  items           ConceptoItem[]
+  legalizaciones  Legalizacion[]
+}
+
+model ConceptoItem {
+  id             Int      @id @default(autoincrement())
+  solicitudId    Int
+  solicitud      SolicitudRecurso @relation(fields: [solicitudId], references: [id], onDelete: Cascade)
+  concepto       String
+  fechaInicio    DateTime
+  fechaFin       DateTime
+  numeroEquipos  Int?
+  valor          Float
+}
+
+model RetentionRate {
+  id           Int    @id @default(autoincrement())
+  concepto     String @unique
+  baseGravable Float
+  porcentaje   Float
+}
+
+model Legalizacion {
+  id                     Int      @id @default(autoincrement())
+  projectId              Int
+  project                Project  @relation(fields: [projectId], references: [id])
+  solicitudId            Int
+  solicitud              SolicitudRecurso @relation(fields: [solicitudId], references: [id])
+  fechaSolicitudAnticipo DateTime
+  valorAnticipo          Float
+  nitCc                  String
+  nombreActividad        String
+
+  solicitanteId          Int
+  solicitante            User     @relation("LegalizacionSolicitante", fields: [solicitanteId], references: [id])
+
+  firmaSolicitanteAt     DateTime?
+  firmaContableAt        DateTime?
+
+  createdAt              DateTime @default(now())
+
+  rubros                 RubroLegalizacion[]
+}
+
+model RubroLegalizacion {
+  id              Int          @id @default(autoincrement())
+  legalizacionId  Int
+  legalizacion    Legalizacion @relation(fields: [legalizacionId], references: [id], onDelete: Cascade)
+  seccion         SeccionRubro
+  fecha           DateTime
+  nit             String
+  beneficiario    String
+  noFactura       String
+  concepto        String
+  valorFactura    Float
+  valorRetefuente Float
+}
+
+model InformeViaje {
+  id                  Int      @id @default(autoincrement())
+  fechaInicioViaje    DateTime
+  duracionDias        Int
+  nombreSolicitante   String
+  documentoIdentidad  String
+  direccion           String
+  telefono            String
+  ciudad              String
+  ruta                String
+  projectId           Int
+  project             Project  @relation(fields: [projectId], references: [id])
+  tituloReferencia    String
+  objetoViaje         String
+  descripcionActividad String
+
+  elaboradoPorId      Int
+  elaboradoPor        User     @relation("InformeElaboradoPor", fields: [elaboradoPorId], references: [id])
+
+  createdAt           DateTime @default(now())
+}
