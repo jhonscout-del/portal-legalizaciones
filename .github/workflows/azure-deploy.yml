@@ -21,11 +21,7 @@ jobs:
           npm run build
 
       - name: Instalar dependencias del servidor
-        run: npm ci
-        working-directory: server
-
-      - name: Generar cliente de Prisma
-        run: npx prisma generate
+        run: npm ci --omit=dev
         working-directory: server
 
       - name: Armar paquete de despliegue (server/ + dist/)
