@@ -1,5 +1,9 @@
 import ExcelJS from 'exceljs'
 
+function dateStr(value) {
+  return new Date(value).toISOString().slice(0, 10)
+}
+
 export async function buildInformeViajeWorkbook(informe) {
   const workbook = new ExcelJS.Workbook()
   const sheet = workbook.addWorksheet('Informe de Viaje')
@@ -10,7 +14,7 @@ export async function buildInformeViajeWorkbook(informe) {
   sheet.getCell('A1').font = { size: 16, bold: true }
 
   const fields = [
-    ['Fecha inicio de viaje', informe.fechaInicioViaje.toISOString().slice(0, 10)],
+    ['Fecha inicio de viaje', dateStr(informe.fechaInicioViaje)],
     ['Duración (días)', informe.duracionDias],
     ['Solicitante', informe.nombreSolicitante],
     ['Documento de identidad', informe.documentoIdentidad],

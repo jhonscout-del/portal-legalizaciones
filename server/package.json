@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "node --watch-path=src src/app.js",
+    "dev": "node src/app.js",
     "start": "node src/app.js",
     "init-workbook": "node scripts/init-workbook.js"
   },

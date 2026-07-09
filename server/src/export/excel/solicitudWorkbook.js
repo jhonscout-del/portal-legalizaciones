@@ -1,5 +1,9 @@
 import ExcelJS from 'exceljs'
 
+function dateStr(value) {
+  return new Date(value).toISOString().slice(0, 10)
+}
+
 const TITLES = {
   VIATICOS: 'Solicitud de Viáticos',
   OPERACIONAL: 'Solicitud de Recursos Operacionales',
@@ -16,7 +20,7 @@ export async function buildSolicitudWorkbook(solicitud) {
   sheet.getCell('A1').font = { size: 16, bold: true }
 
   const headerFields = [
-    ['Fecha', solicitud.fecha.toISOString().slice(0, 10)],
+    ['Fecha', dateStr(solicitud.fecha)],
     ['A favor de', solicitud.aFavorDe],
     ['NIT o C.C.', solicitud.nitCc],
     ['Dirección', solicitud.direccion],
@@ -52,8 +56,8 @@ export async function buildSolicitudWorkbook(solicitud) {
   for (const item of solicitud.items) {
     sheet.getRow(row).values = [
       item.concepto,
-      item.fechaInicio.toISOString().slice(0, 10),
-      item.fechaFin.toISOString().slice(0, 10),
+      dateStr(item.fechaInicio),
+      dateStr(item.fechaFin),
       showEquipos ? item.numeroEquipos : '',
       item.valor,
     ]

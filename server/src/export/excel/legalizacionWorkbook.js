@@ -1,5 +1,9 @@
 import ExcelJS from 'exceljs'
 
+function dateStr(value) {
+  return new Date(value).toISOString().slice(0, 10)
+}
+
 export async function buildLegalizacionWorkbook(legalizacion) {
   const workbook = new ExcelJS.Workbook()
   const sheet = workbook.addWorksheet('Legalización')
@@ -11,7 +15,7 @@ export async function buildLegalizacionWorkbook(legalizacion) {
 
   const headerFields = [
     ['Nombre del proyecto', legalizacion.project?.name],
-    ['Fecha solicitud anticipo', legalizacion.fechaSolicitudAnticipo.toISOString().slice(0, 10)],
+    ['Fecha solicitud anticipo', dateStr(legalizacion.fechaSolicitudAnticipo)],
     ['Valor anticipo', legalizacion.valorAnticipo],
     ['Solicitante', legalizacion.solicitante?.name],
     ['NIT/CC', legalizacion.nitCc],
@@ -38,7 +42,7 @@ export async function buildLegalizacionWorkbook(legalizacion) {
   const firstDataRow = row
   for (const r of legalizacion.rubros) {
     sheet.getRow(row).values = [
-      r.fecha.toISOString().slice(0, 10),
+      dateStr(r.fecha),
       r.nit,
       r.beneficiario,
       r.noFactura,
