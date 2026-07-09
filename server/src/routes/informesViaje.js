@@ -3,7 +3,7 @@ import { requireAuth } from '../middleware/auth.js'
 import { renderInformeViajePdf } from '../export/pdf/informeViajeTemplate.js'
 import { buildInformeViajeWorkbook } from '../export/excel/informeViajeWorkbook.js'
 import { listAttachments } from '../lib/repos/attachments.js'
-import { sendMailToRecipients } from '../lib/graphMail.js'
+import { sendMailToRecipients, resolveSenderUpn } from '../lib/graphMail.js'
 import * as informesViajeRepo from '../lib/repos/informesViaje.js'
 
 export const informesViajeRouter = Router()
@@ -46,6 +46,7 @@ informesViajeRouter.post('/', async (req, res) => {
       to: destinatarios,
       subject: `Nuevo informe de viaje No. ${informe.id}`,
       html: `<p>Se registró el informe de viaje No. ${informe.id} de ${nombreSolicitante}.</p>`,
+      senderUpn: resolveSenderUpn(req.session.user),
     }).catch((err) => console.error('Error enviando correo de informe de viaje:', err.message))
   }
 

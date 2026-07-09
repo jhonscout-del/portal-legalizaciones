@@ -8,14 +8,23 @@ function parseRecipients(value) {
     .filter((email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
 }
 
-export async function sendMailToRecipients({ to, subject, html }) {
+// El admin local ('local-admin') y los usuarios de /api/auth/dev-login
+// ('dev-...') no tienen un buzón real en el tenant — para esos, el correo
+// debe salir desde la cuenta de servicio (MAIL_SENDER_UPN), no desde su
+// "email" simulado.
+export function resolveSenderUpn(user) {
+  const isRealMicrosoftAccount = user?.microsoftOid && user.microsoftOid !== 'local-admin' && !user.microsoftOid.startsWith('dev-')
+  return (isRealMicrosoftAccount ? user.email : null) || process.env.MAIL_SENDER_UPN
+}
+
+export async function sendMailToRecipients({ to, subject, html, senderUpn }) {
   const recipients = parseRecipients(to)
   if (recipients.length === 0) return { sent: false, reason: 'Sin destinatarios válidos' }
 
-  const senderUpn = process.env.MAIL_SENDER_UPN
-  if (!senderUpn) return { sent: false, reason: 'MAIL_SENDER_UPN no configurado' }
+  const upn = senderUpn || process.env.MAIL_SENDER_UPN
+  if (!upn) return { sent: false, reason: 'No hay remitente configurado' }
 
-  await graphJson(`/users/${encodeURIComponent(senderUpn)}/sendMail`, {
+  await graphJson(`/users/${encodeURIComponent(upn)}/sendMail`, {
     method: 'POST',
     body: JSON.stringify({
       message: {

@@ -3,7 +3,7 @@ import { requireAuth, requireRole } from '../middleware/auth.js'
 import { renderLegalizacionPdf } from '../export/pdf/legalizacionTemplate.js'
 import { buildLegalizacionWorkbook } from '../export/excel/legalizacionWorkbook.js'
 import { listAttachments } from '../lib/repos/attachments.js'
-import { sendMailToRecipients } from '../lib/graphMail.js'
+import { sendMailToRecipients, resolveSenderUpn } from '../lib/graphMail.js'
 import * as legalizacionesRepo from '../lib/repos/legalizaciones.js'
 
 export const legalizacionesRouter = Router()
@@ -44,6 +44,7 @@ legalizacionesRouter.post('/', async (req, res) => {
       to: destinatarios,
       subject: `Nueva legalización No. ${legalizacion.id}`,
       html: `<p>Se registró la legalización No. ${legalizacion.id} para la actividad "${nombreActividad}".</p>`,
+      senderUpn: resolveSenderUpn(req.session.user),
     }).catch((err) => console.error('Error enviando correo de legalización:', err.message))
   }
 

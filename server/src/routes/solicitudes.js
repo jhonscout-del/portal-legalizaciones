@@ -3,7 +3,7 @@ import { requireAuth, requireRole } from '../middleware/auth.js'
 import { renderSolicitudPdf } from '../export/pdf/solicitudTemplate.js'
 import { buildSolicitudWorkbook } from '../export/excel/solicitudWorkbook.js'
 import { listAttachments } from '../lib/repos/attachments.js'
-import { sendMailToRecipients } from '../lib/graphMail.js'
+import { sendMailToRecipients, resolveSenderUpn } from '../lib/graphMail.js'
 import * as solicitudesRepo from '../lib/repos/solicitudes.js'
 
 export const solicitudesRouter = Router()
@@ -53,6 +53,7 @@ solicitudesRouter.post('/', async (req, res) => {
       to: destinatarios,
       subject: `Nueva solicitud de recursos No. ${solicitud.id} (${tipo})`,
       html: `<p>Se registró la solicitud No. ${solicitud.id} a favor de ${aFavorDe} por un total pendiente de revisión.</p>`,
+      senderUpn: resolveSenderUpn(req.session.user),
     }).catch((err) => console.error('Error enviando correo de solicitud:', err.message))
   }
 

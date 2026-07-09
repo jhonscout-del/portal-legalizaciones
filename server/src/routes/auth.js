@@ -66,7 +66,7 @@ authRouter.get('/callback', async (req, res) => {
       user = await usersRepo.createUser({ microsoftOid, email, name, role })
     }
 
-    req.session.user = { id: user.id, name: user.name, email: user.email, role: user.role }
+    req.session.user = { id: user.id, name: user.name, email: user.email, role: user.role, microsoftOid: user.microsoftOid }
     res.redirect(process.env.CLIENT_APP_URL)
   } catch (err) {
     console.error('Error en callback de Microsoft:', err)
@@ -100,7 +100,7 @@ authRouter.post('/local-login', async (req, res) => {
     })
   }
 
-  req.session.user = { id: user.id, name: user.name, email: user.email, role: user.role }
+  req.session.user = { id: user.id, name: user.name, email: user.email, role: user.role, microsoftOid: user.microsoftOid }
   res.json({ user: req.session.user })
 })
 
