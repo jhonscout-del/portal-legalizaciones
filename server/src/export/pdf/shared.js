@@ -1,23 +1,27 @@
 import React from 'react'
 import { StyleSheet, View, Text, Image } from '@react-pdf/renderer'
-import fs from 'node:fs'
-import path from 'node:path'
-import { SIGNATURES_DIR } from '../../lib/uploads.js'
+import { downloadFile } from '../../lib/graphFiles.js'
 
 const h = React.createElement
 
-const MIME_BY_EXT = { '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp' }
-
-export function signatureImageDataUri(user) {
-  if (!user?.signatureImagePath) return null
-  try {
-    const filePath = path.join(SIGNATURES_DIR, user.signatureImagePath)
-    const buffer = fs.readFileSync(filePath)
-    const mime = MIME_BY_EXT[path.extname(filePath).toLowerCase()] || 'image/png'
-    return `data:${mime};base64,${buffer.toString('base64')}`
-  } catch {
-    return null
-  }
+// @react-pdf/renderer construye el árbol de forma síncrona, así que las
+// imágenes de firma (que viven en OneDrive) se resuelven ANTES de renderizar
+// el documento — ver resolveSignatures() — y se pasan ya como data URI.
+export async function resolveSignatures(users) {
+  const map = new Map()
+  await Promise.all(
+    users.filter(Boolean).map(async (user) => {
+      if (!user.signatureFileId) return
+      try {
+        const buffer = await downloadFile(user.signatureFileId)
+        const mime = user.signatureMimeType || 'image/png'
+        map.set(user.id, `data:${mime};base64,${buffer.toString('base64')}`)
+      } catch (err) {
+        console.error(`No se pudo descargar la firma del usuario ${user.id}:`, err.message)
+      }
+    }),
+  )
+  return map
 }
 
 export const styles = StyleSheet.create({
@@ -69,8 +73,9 @@ export function formatDateTime(value) {
 }
 
 // boxStyle: styles.signatureBox (3 firmas) o styles.signatureBoxQuarter (4 firmas)
-export function SignatureBox({ boxStyle, label, user, at, pending }) {
-  const dataUri = signatureImageDataUri(user)
+// signatures: Map de userId -> data URI, resuelto antes con resolveSignatures()
+export function SignatureBox({ boxStyle, label, user, at, pending, signatures }) {
+  const dataUri = user ? signatures?.get(user.id) : null
   return h(View, { style: boxStyle }, [
     dataUri ? h(Image, { key: 'img', src: dataUri, style: styles.signatureImage }) : null,
     h(View, { key: 'line', style: styles.signatureLine }, h(Text, null, label)),

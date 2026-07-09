@@ -1,19 +1,14 @@
 import { Router } from 'express'
-import { prisma } from '../lib/prisma.js'
 import { requireAuth } from '../middleware/auth.js'
 import { renderInformeViajePdf } from '../export/pdf/informeViajeTemplate.js'
 import { buildInformeViajeWorkbook } from '../export/excel/informeViajeWorkbook.js'
-import { listAttachments } from './attachments.js'
+import { listAttachments } from '../lib/repos/attachments.js'
 import { sendMailToRecipients } from '../lib/graphMail.js'
+import * as informesViajeRepo from '../lib/repos/informesViaje.js'
 
 export const informesViajeRouter = Router()
 
 informesViajeRouter.use(requireAuth)
-
-const include = {
-  project: { include: { businessUnit: true } },
-  elaboradoPor: true,
-}
 
 async function withAttachments(informe) {
   const attachments = await listAttachments('INFORME_VIAJE', informe.id)
@@ -21,12 +16,11 @@ async function withAttachments(informe) {
 }
 
 informesViajeRouter.get('/', async (req, res) => {
-  const informes = await prisma.informeViaje.findMany({ include, orderBy: { createdAt: 'desc' } })
-  res.json(informes)
+  res.json(await informesViajeRepo.listInformesViaje())
 })
 
 informesViajeRouter.get('/:id', async (req, res) => {
-  const informe = await prisma.informeViaje.findUnique({ where: { id: Number(req.params.id) }, include })
+  const informe = await informesViajeRepo.getInformeViaje(req.params.id)
   if (!informe) return res.status(404).json({ error: 'No encontrado' })
   res.json(await withAttachments(informe))
 })
@@ -42,25 +36,10 @@ informesViajeRouter.post('/', async (req, res) => {
     return res.status(400).json({ error: 'Faltan campos obligatorios' })
   }
 
-  const informe = await prisma.informeViaje.create({
-    data: {
-      fechaInicioViaje: new Date(fechaInicioViaje),
-      duracionDias: Number(duracionDias),
-      nombreSolicitante,
-      documentoIdentidad,
-      direccion,
-      telefono,
-      ciudad,
-      ruta,
-      projectId: Number(projectId),
-      tituloReferencia,
-      objetoViaje,
-      descripcionActividad,
-      destinatarios: destinatarios || null,
-      elaboradoPorId: req.session.user.id,
-    },
-    include,
-  })
+  const informe = await informesViajeRepo.createInformeViaje(
+    { fechaInicioViaje, duracionDias, nombreSolicitante, documentoIdentidad, direccion, telefono, ciudad, ruta, projectId, tituloReferencia, objetoViaje, descripcionActividad, destinatarios },
+    req.session.user.id,
+  )
 
   if (destinatarios) {
     sendMailToRecipients({
@@ -74,8 +53,9 @@ informesViajeRouter.post('/', async (req, res) => {
 })
 
 informesViajeRouter.get('/:id/export.pdf', async (req, res) => {
-  const informe = await prisma.informeViaje.findUnique({ where: { id: Number(req.params.id) }, include })
-  if (!informe) return res.status(404).json({ error: 'No encontrado' })
+  const found = await informesViajeRepo.getInformeViaje(req.params.id)
+  if (!found) return res.status(404).json({ error: 'No encontrado' })
+  const informe = await withAttachments(found)
   const pdfStream = await renderInformeViajePdf(informe)
   res.setHeader('Content-Type', 'application/pdf')
   res.setHeader('Content-Disposition', `attachment; filename="informe-viaje-${informe.id}.pdf"`)
@@ -83,7 +63,7 @@ informesViajeRouter.get('/:id/export.pdf', async (req, res) => {
 })
 
 informesViajeRouter.get('/:id/export.xlsx', async (req, res) => {
-  const informe = await prisma.informeViaje.findUnique({ where: { id: Number(req.params.id) }, include })
+  const informe = await informesViajeRepo.getInformeViaje(req.params.id)
   if (!informe) return res.status(404).json({ error: 'No encontrado' })
   const workbook = await buildInformeViajeWorkbook(informe)
   res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')

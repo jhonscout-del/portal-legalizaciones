@@ -1,6 +1,6 @@
 import React from 'react'
 import { Document, Page, Text, View, renderToStream } from '@react-pdf/renderer'
-import { styles, CCCM_FOOTER, formatDate, SignatureBox, AttachmentsSection } from './shared.js'
+import { styles, CCCM_FOOTER, formatDate, SignatureBox, AttachmentsSection, resolveSignatures } from './shared.js'
 
 const h = React.createElement
 
@@ -11,7 +11,7 @@ function Field({ label, value }) {
   ])
 }
 
-function InformeViajeDoc({ informe }) {
+function InformeViajeDoc({ informe, signatures }) {
   return h(Document, null,
     h(Page, { size: 'A4', style: styles.page }, [
       h(View, { key: 'header', style: styles.headerRow }, [
@@ -56,7 +56,7 @@ function InformeViajeDoc({ informe }) {
       h(AttachmentsSection, { key: 'attachments', attachments: informe.attachments }),
 
       h(View, { key: 'sig', style: styles.signatures }, [
-        h(SignatureBox, { key: 'b1', boxStyle: styles.signatureBox, label: 'Elaborado por', user: informe.elaboradoPor, at: informe.createdAt }),
+        h(SignatureBox, { key: 'b1', boxStyle: styles.signatureBox, label: 'Elaborado por', user: informe.elaboradoPor, at: informe.createdAt, signatures }),
       ]),
 
       h(Text, { key: 'footer', style: styles.footer }, CCCM_FOOTER),
@@ -65,5 +65,6 @@ function InformeViajeDoc({ informe }) {
 }
 
 export async function renderInformeViajePdf(informe) {
-  return renderToStream(h(InformeViajeDoc, { informe }))
+  const signatures = await resolveSignatures([informe.elaboradoPor])
+  return renderToStream(h(InformeViajeDoc, { informe, signatures }))
 }

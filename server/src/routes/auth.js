@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import bcrypt from 'bcryptjs'
-import { prisma } from '../lib/prisma.js'
 import { getMsalClient, REDIRECT_URI, SCOPES } from '../lib/msal.js'
+import * as usersRepo from '../lib/repos/users.js'
 
 export const authRouter = Router()
 
@@ -59,11 +59,11 @@ authRouter.get('/callback', async (req, res) => {
     const email = (claims.preferred_username || claims.email || '').toLowerCase()
     const name = claims.name || email
 
-    let user = await prisma.user.findUnique({ where: { microsoftOid } })
+    let user = await usersRepo.findByMicrosoftOid(microsoftOid)
     if (!user) {
       const bootstrapAdmin = process.env.BOOTSTRAP_ADMIN_EMAIL?.toLowerCase()
       const role = bootstrapAdmin && email === bootstrapAdmin ? 'ADMINISTRATIVO' : 'SOLICITANTE'
-      user = await prisma.user.create({ data: { microsoftOid, email, name, role } })
+      user = await usersRepo.createUser({ microsoftOid, email, name, role })
     }
 
     req.session.user = { id: user.id, name: user.name, email: user.email, role: user.role }
@@ -90,15 +90,13 @@ authRouter.post('/local-login', async (req, res) => {
     return res.status(401).json({ error: 'Usuario o contraseña incorrectos' })
   }
 
-  let user = await prisma.user.findUnique({ where: { microsoftOid: 'local-admin' } })
+  let user = await usersRepo.findByMicrosoftOid('local-admin')
   if (!user) {
-    user = await prisma.user.create({
-      data: {
-        microsoftOid: 'local-admin',
-        email: 'admin-local@portal.local',
-        name: 'Administrador Local',
-        role: 'ADMINISTRATIVO',
-      },
+    user = await usersRepo.createUser({
+      microsoftOid: 'local-admin',
+      email: 'admin-local@portal.local',
+      name: 'Administrador Local',
+      role: 'ADMINISTRATIVO',
     })
   }
 

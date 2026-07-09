@@ -1,6 +1,6 @@
 import React from 'react'
 import { Document, Page, Text, View, renderToStream } from '@react-pdf/renderer'
-import { styles, CCCM_FOOTER, formatCOP, formatDate, SignatureBox, AttachmentsSection } from './shared.js'
+import { styles, CCCM_FOOTER, formatCOP, formatDate, SignatureBox, AttachmentsSection, resolveSignatures } from './shared.js'
 
 const h = React.createElement
 
@@ -11,7 +11,7 @@ function Field({ label, value }) {
   ])
 }
 
-function LegalizacionDoc({ legalizacion }) {
+function LegalizacionDoc({ legalizacion, signatures }) {
   const { resumen } = legalizacion
 
   return h(Document, null,
@@ -86,6 +86,7 @@ function LegalizacionDoc({ legalizacion }) {
           label: 'Firma solicitante',
           user: legalizacion.firmaSolicitanteAt ? legalizacion.solicitante : null,
           at: legalizacion.firmaSolicitanteAt,
+          signatures,
         }),
         h(SignatureBox, {
           key: 'b2',
@@ -93,6 +94,7 @@ function LegalizacionDoc({ legalizacion }) {
           label: 'Firma contabilidad',
           user: legalizacion.firmaContablePor,
           at: legalizacion.firmaContableAt,
+          signatures,
         }),
       ]),
 
@@ -102,5 +104,6 @@ function LegalizacionDoc({ legalizacion }) {
 }
 
 export async function renderLegalizacionPdf(legalizacion) {
-  return renderToStream(h(LegalizacionDoc, { legalizacion }))
+  const signatures = await resolveSignatures([legalizacion.solicitante, legalizacion.firmaContablePor])
+  return renderToStream(h(LegalizacionDoc, { legalizacion, signatures }))
 }

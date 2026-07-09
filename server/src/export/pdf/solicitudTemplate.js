@@ -1,6 +1,6 @@
 import React from 'react'
 import { Document, Page, Text, View, renderToStream } from '@react-pdf/renderer'
-import { styles, CCCM_FOOTER, formatCOP, formatDate, SignatureBox, AttachmentsSection } from './shared.js'
+import { styles, CCCM_FOOTER, formatCOP, formatDate, SignatureBox, AttachmentsSection, resolveSignatures } from './shared.js'
 
 const h = React.createElement
 
@@ -17,7 +17,7 @@ function Field({ label, value }) {
   ])
 }
 
-function SolicitudDoc({ solicitud }) {
+function SolicitudDoc({ solicitud, signatures }) {
   const total = solicitud.items.reduce((s, i) => s + i.valor, 0)
   const showEquipos = solicitud.tipo === 'OPERACIONAL'
 
@@ -96,10 +96,10 @@ function SolicitudDoc({ solicitud }) {
       h(AttachmentsSection, { key: 'attachments', attachments: solicitud.attachments }),
 
       h(View, { key: 'sig', style: styles.signatures }, [
-        h(SignatureBox, { key: 'b1', boxStyle: styles.signatureBoxQuarter, label: 'Firma solicitante', user: solicitud.solicitante }),
-        h(SignatureBox, { key: 'b2', boxStyle: styles.signatureBoxQuarter, label: 'Visto bueno aprobador', user: solicitud.vistoBuenoAprobador, at: solicitud.vistoBuenoAprobadorAt }),
-        h(SignatureBox, { key: 'b3', boxStyle: styles.signatureBoxQuarter, label: 'Visto bueno contable', user: solicitud.vistoBuenoContable, at: solicitud.vistoBuenoContableAt }),
-        h(SignatureBox, { key: 'b4', boxStyle: styles.signatureBoxQuarter, label: 'Visto bueno administrativo', user: solicitud.vistoBuenoAdmin, at: solicitud.vistoBuenoAdminAt }),
+        h(SignatureBox, { key: 'b1', boxStyle: styles.signatureBoxQuarter, label: 'Firma solicitante', user: solicitud.solicitante, signatures }),
+        h(SignatureBox, { key: 'b2', boxStyle: styles.signatureBoxQuarter, label: 'Visto bueno aprobador', user: solicitud.vistoBuenoAprobador, at: solicitud.vistoBuenoAprobadorAt, signatures }),
+        h(SignatureBox, { key: 'b3', boxStyle: styles.signatureBoxQuarter, label: 'Visto bueno contable', user: solicitud.vistoBuenoContable, at: solicitud.vistoBuenoContableAt, signatures }),
+        h(SignatureBox, { key: 'b4', boxStyle: styles.signatureBoxQuarter, label: 'Visto bueno administrativo', user: solicitud.vistoBuenoAdmin, at: solicitud.vistoBuenoAdminAt, signatures }),
       ]),
 
       h(Text, { key: 'footer', style: styles.footer }, CCCM_FOOTER),
@@ -108,5 +108,11 @@ function SolicitudDoc({ solicitud }) {
 }
 
 export async function renderSolicitudPdf(solicitud) {
-  return renderToStream(h(SolicitudDoc, { solicitud }))
+  const signatures = await resolveSignatures([
+    solicitud.solicitante,
+    solicitud.vistoBuenoAprobador,
+    solicitud.vistoBuenoContable,
+    solicitud.vistoBuenoAdmin,
+  ])
+  return renderToStream(h(SolicitudDoc, { solicitud, signatures }))
 }

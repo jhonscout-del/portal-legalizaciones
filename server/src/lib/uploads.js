@@ -1,52 +1,26 @@
 import multer from 'multer'
-import path from 'node:path'
-import fs from 'node:fs'
-import crypto from 'node:crypto'
-import { fileURLToPath } from 'node:url'
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url))
+// Los archivos ya no se guardan en disco local (Azure App Service borra la
+// carpeta de la app en cada deploy) — quedan en memoria como Buffer y de ahí
+// se suben a OneDrive vía graphFiles.js.
 
-// UPLOADS_DIR permite apuntar a almacenamiento persistente en producción
-// (p. ej. Azure App Service borra la carpeta de la app en cada deploy, pero
-// /home sí persiste). En desarrollo local usa server/uploads por defecto.
-export const UPLOADS_ROOT = process.env.UPLOADS_DIR || path.join(__dirname, '..', '..', 'uploads')
-export const ATTACHMENTS_DIR = path.join(UPLOADS_ROOT, 'attachments')
-export const SIGNATURES_DIR = path.join(UPLOADS_ROOT, 'signatures')
-
-fs.mkdirSync(ATTACHMENTS_DIR, { recursive: true })
-fs.mkdirSync(SIGNATURES_DIR, { recursive: true })
-
-const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
-
-function safeName(originalName) {
-  const ext = path.extname(originalName).slice(0, 20)
-  return `${Date.now()}-${crypto.randomBytes(8).toString('hex')}${ext}`
-}
+const MAX_ATTACHMENT_SIZE = 10 * 1024 * 1024 // 10MB
+const MAX_SIGNATURE_SIZE = 2 * 1024 * 1024 // 2MB
 
 export const attachmentUpload = multer({
-  limits: { fileSize: MAX_FILE_SIZE },
-  storage: multer.diskStorage({
-    destination: (req, file, cb) => cb(null, ATTACHMENTS_DIR),
-    filename: (req, file, cb) => cb(null, safeName(file.originalname)),
-  }),
+  storage: multer.memoryStorage(),
+  limits: { fileSize: MAX_ATTACHMENT_SIZE },
 })
 
 const SIGNATURE_MIME_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp'])
 
 export const signatureUpload = multer({
-  limits: { fileSize: 2 * 1024 * 1024 },
+  storage: multer.memoryStorage(),
+  limits: { fileSize: MAX_SIGNATURE_SIZE },
   fileFilter: (req, file, cb) => {
     if (!SIGNATURE_MIME_TYPES.has(file.mimetype)) {
       return cb(new Error('La firma debe ser una imagen PNG, JPEG o WEBP'))
     }
     cb(null, true)
   },
-  storage: multer.diskStorage({
-    destination: (req, file, cb) => cb(null, SIGNATURES_DIR),
-    filename: (req, file, cb) => cb(null, safeName(file.originalname)),
-  }),
 })
-
-export function deleteFileIfExists(absolutePath) {
-  fs.rm(absolutePath, { force: true }, () => {})
-}
