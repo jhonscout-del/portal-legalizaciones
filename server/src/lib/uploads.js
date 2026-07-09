@@ -5,9 +5,16 @@ import crypto from 'node:crypto'
 import { fileURLToPath } from 'node:url'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
-export const UPLOADS_ROOT = path.join(__dirname, '..', '..', 'uploads')
+
+// UPLOADS_DIR permite apuntar a almacenamiento persistente en producción
+// (p. ej. Azure App Service borra la carpeta de la app en cada deploy, pero
+// /home sí persiste). En desarrollo local usa server/uploads por defecto.
+export const UPLOADS_ROOT = process.env.UPLOADS_DIR || path.join(__dirname, '..', '..', 'uploads')
 export const ATTACHMENTS_DIR = path.join(UPLOADS_ROOT, 'attachments')
 export const SIGNATURES_DIR = path.join(UPLOADS_ROOT, 'signatures')
+
+fs.mkdirSync(ATTACHMENTS_DIR, { recursive: true })
+fs.mkdirSync(SIGNATURES_DIR, { recursive: true })
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
 

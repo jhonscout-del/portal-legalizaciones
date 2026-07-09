@@ -1,0 +1,42 @@
+name: Deploy to Azure App Service
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Instalar y compilar el cliente (React/Vite)
+        run: |
+          npm ci
+          npm run build
+
+      - name: Instalar dependencias del servidor
+        run: npm ci
+        working-directory: server
+
+      - name: Generar cliente de Prisma
+        run: npx prisma generate
+        working-directory: server
+
+      - name: Armar paquete de despliegue (server/ + dist/)
+        run: |
+          mkdir -p release/server
+          cp -r server/. release/server/
+          cp -r dist release/dist
+
+      - name: Desplegar en Azure App Service
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ secrets.AZURE_WEBAPP_NAME }}
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          package: release
