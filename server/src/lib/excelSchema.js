@@ -1,11 +1,14 @@
 // Fuente única de verdad de las tablas del libro Excel: nombre de tabla,
 // nombre de hoja, columnas en orden fijo (SOLO SE AGREGA AL FINAL — nunca
 // insertar una columna en medio, rompe el mapeo fila-array <-> objeto para
-// filas ya existentes) y cuáles columnas son de fecha (se guardan/leen
-// siempre como texto ISO-8601).
+// filas ya existentes), cuáles columnas son de fecha (se guardan/leen
+// siempre como texto ISO-8601), y cuáles son texto que "parece número"
+// (códigos con ceros a la izquierda, teléfonos, cédulas, No. de cuenta,
+// No. de factura...) — sin marcarlas, Excel las auto-convierte a número y
+// se pierden los ceros a la izquierda (confirmado con pruebas reales).
 //
-// Usado tanto por scripts/init-workbook.js (crear el libro) como por
-// excelDb.js (mapear filas de Graph a objetos JS).
+// Usado tanto por scripts/init-workbook.js (crear el libro, formatea estas
+// columnas como Texto) como por excelDb.js (mapear filas de Graph a objetos JS).
 
 export const TABLES = {
   Users: {
@@ -13,18 +16,21 @@ export const TABLES = {
     idColumn: 'id',
     columns: ['id', 'name', 'email', 'microsoftOid', 'role', 'signatureFileId', 'signatureMimeType', 'createdAt'],
     dateColumns: ['createdAt'],
+    textColumns: [],
   },
   BusinessUnits: {
     sheet: 'BusinessUnits',
     idColumn: 'id',
     columns: ['id', 'code', 'name', 'donor', 'active'],
     dateColumns: [],
+    textColumns: ['code'],
   },
   Projects: {
     sheet: 'Projects',
     idColumn: 'id',
     columns: ['id', 'name', 'businessUnitId', 'encargado', 'active'],
     dateColumns: [],
+    textColumns: [],
   },
   SolicitudesRecurso: {
     sheet: 'SolicitudesRecurso',
@@ -40,18 +46,21 @@ export const TABLES = {
       'createdAt',
     ],
     dateColumns: ['fecha', 'vistoBuenoAprobadorAt', 'vistoBuenoContableAt', 'vistoBuenoAdminAt', 'rechazadoAt', 'createdAt'],
+    textColumns: ['nitCc', 'telefono', 'cuentaBancariaNo', 'cedulaNitTitular'],
   },
   ConceptoItems: {
     sheet: 'ConceptoItems',
     idColumn: 'id',
     columns: ['id', 'solicitudId', 'concepto', 'fechaInicio', 'fechaFin', 'numeroEquipos', 'valor'],
     dateColumns: ['fechaInicio', 'fechaFin'],
+    textColumns: [],
   },
   RetentionRates: {
     sheet: 'RetentionRates',
     idColumn: 'id',
     columns: ['id', 'concepto', 'baseGravable', 'porcentaje'],
     dateColumns: [],
+    textColumns: [],
   },
   Legalizaciones: {
     sheet: 'Legalizaciones',
@@ -62,12 +71,14 @@ export const TABLES = {
       'firmaSolicitanteAt', 'firmaContablePorId', 'firmaContableAt', 'createdAt',
     ],
     dateColumns: ['fechaSolicitudAnticipo', 'firmaSolicitanteAt', 'firmaContableAt', 'createdAt'],
+    textColumns: ['nitCc'],
   },
   RubrosLegalizacion: {
     sheet: 'RubrosLegalizacion',
     idColumn: 'id',
     columns: ['id', 'legalizacionId', 'seccion', 'fecha', 'nit', 'beneficiario', 'noFactura', 'concepto', 'valorFactura', 'valorRetefuente'],
     dateColumns: ['fecha'],
+    textColumns: ['nit', 'noFactura'],
   },
   InformesViaje: {
     sheet: 'InformesViaje',
@@ -78,18 +89,21 @@ export const TABLES = {
       'descripcionActividad', 'destinatarios', 'elaboradoPorId', 'createdAt',
     ],
     dateColumns: ['fechaInicioViaje', 'createdAt'],
+    textColumns: ['documentoIdentidad', 'telefono'],
   },
   Attachments: {
     sheet: 'Attachments',
     idColumn: 'id',
     columns: ['id', 'relatedType', 'relatedId', 'filename', 'mimeType', 'size', 'driveItemId', 'uploadedById', 'createdAt'],
     dateColumns: ['createdAt'],
+    textColumns: [],
   },
   Counters: {
     sheet: 'Counters',
     idColumn: 'tableName',
     columns: ['tableName', 'nextId'],
     dateColumns: [],
+    textColumns: [],
   },
 }
 

@@ -18,6 +18,16 @@ const RETENTION_RATES = [
   { concepto: 'Compras (no responsables de IVA)', baseGravable: 498000, porcentaje: 0.035 },
 ]
 
+const BUSINESS_UNITS = [
+  { code: '009', name: 'CCCM', donor: 'CCCM', active: true },
+  { code: '010', name: 'CCCM', donor: 'THE FEDERAL MINISTER FOR FOREIGN AFFAIRS', active: true },
+  { code: '035', name: 'ALEMANIA 2024', donor: 'THE FEDERAL MINISTER FOR FOREIGN AFFAIRS', active: true },
+  { code: '039', name: 'PNUD 2025', donor: 'PROGRAMA DE LAS NACIONES UNIDAS PARA EL DESARROLLO', active: true },
+  { code: '040', name: 'COSUDE 2025', donor: 'AGENCIA DE COOPERACION SUIZA PARA EL DESARROLLO - COSUDE', active: true },
+  { code: '041', name: 'NORAD 2026 - 2029', donor: 'AGENCIA NORUEGA DE COOPERACION PARA EL DESARROLLO - NORAD', active: true },
+  { code: '042', name: 'DEPARTAMENTO DE ESTADO 2026 - 2027', donor: 'DEPARTAMENTO DE ESTADO DE ESTADOS UNIDOS', active: true },
+]
+
 function getServiceUpn() {
   const upn = process.env.ONEDRIVE_SERVICE_UPN || process.env.MAIL_SENDER_UPN
   if (!upn) throw new Error('Define ONEDRIVE_SERVICE_UPN (o MAIL_SENDER_UPN) en server/.env')
@@ -39,9 +49,11 @@ function buildWorkbook() {
     let rows
     if (tableName === 'RetentionRates') {
       rows = RETENTION_RATES.map((r, i) => [i + 1, r.concepto, r.baseGravable, r.porcentaje])
+    } else if (tableName === 'BusinessUnits') {
+      rows = BUSINESS_UNITS.map((bu, i) => [i + 1, bu.code, bu.name, bu.donor, bu.active])
     } else if (tableName === 'Counters') {
-      // nextId=1 para todas las tablas de datos reales (no Counters mismo)
-      rows = TABLE_NAMES.map((name) => [name, 1])
+      const seededCounts = { BusinessUnits: BUSINESS_UNITS.length, RetentionRates: RETENTION_RATES.length }
+      rows = TABLE_NAMES.map((name) => [name, (seededCounts[name] ?? 0) + 1])
     } else {
       // Tabla vacía al inicio: exceljs necesita al menos una fila para crear
       // la Tabla; se agrega una fila en blanco y se borra después de subir.
@@ -58,9 +70,11 @@ function buildWorkbook() {
       rows,
     })
 
-    // Columnas de fecha como Texto para evitar ambigüedad de tipos al leer/escribir vía Graph.
-    schema.dateColumns.forEach((dateCol) => {
-      const colIndex = schema.columns.indexOf(dateCol) + 1
+    // Columnas de fecha y de texto-que-parece-número (códigos, teléfonos,
+    // cédulas...) como Texto: sin esto, Excel las auto-convierte a número y
+    // se pierden ceros a la izquierda o se pierde la fecha exacta.
+    ;[...schema.dateColumns, ...schema.textColumns].forEach((colName) => {
+      const colIndex = schema.columns.indexOf(colName) + 1
       sheet.getColumn(colIndex).numFmt = '@'
     })
   }
@@ -99,8 +113,8 @@ async function waitForWorkbookReady(itemId, upn, attempts = 5) {
 }
 
 async function cleanupPlaceholderRow(itemId, upn, tableName) {
-  await graphJson(`/users/${encodeURIComponent(upn)}/drive/items/${itemId}/workbook/tables/${tableName}/rows/itemAt(index=0)/delete`, {
-    method: 'POST',
+  await graphJson(`/users/${encodeURIComponent(upn)}/drive/items/${itemId}/workbook/tables/${tableName}/rows/itemAt(index=0)`, {
+    method: 'DELETE',
   })
 }
 
@@ -128,9 +142,10 @@ async function main() {
   const tablesInfo = await waitForWorkbookReady(uploaded.id, upn)
   console.log(`Graph reconoce ${tablesInfo.value.length} tablas:`, tablesInfo.value.map((t) => t.name).join(', '))
 
-  if (tablesInfo.value.length !== emptyTablesToClean.length + 2) {
+  const expectedTables = TABLE_NAMES.length + 1 // + Counters
+  if (tablesInfo.value.length !== expectedTables) {
     console.warn(
-      `Aviso: se esperaban ${emptyTablesToClean.length + 2} tablas y Graph reportó ${tablesInfo.value.length}. Revisa el libro manualmente antes de continuar.`,
+      `Aviso: se esperaban ${expectedTables} tablas y Graph reportó ${tablesInfo.value.length}. Revisa el libro manualmente antes de continuar.`,
     )
   }
 

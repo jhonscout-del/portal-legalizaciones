@@ -86,6 +86,18 @@ export function invalidateCache(tableName) {
   tableCache.delete(tableName)
 }
 
+// Tras escribir, el caché se actualiza directamente en vez de solo
+// invalidarlo: Graph puede tardar en reflejar una escritura reciente en una
+// lectura inmediatamente posterior (no usamos workbook sessions), así que
+// "invalidar y volver a pedirle a Graph" puede perder la fila que acabamos
+// de escribir (se confirmó en pruebas reales). Como ya sabemos exactamente
+// qué cambió, mutamos el caché en memoria en vez de volver a preguntarle a Graph.
+function mutateCacheAfterWrite(tableName, mutator) {
+  const cached = tableCache.get(tableName)
+  if (!cached) return // sin caché previo; la próxima lectura real irá a Graph
+  tableCache.set(tableName, { rows: mutator(cached.rows), fetchedAt: Date.now() })
+}
+
 export async function listRows(tableName) {
   const cached = tableCache.get(tableName)
   if (cached && Date.now() - cached.fetchedAt < CACHE_TTL_MS) return cached.rows
@@ -159,7 +171,7 @@ export async function insertRow(tableName, data) {
       method: 'POST',
       body: JSON.stringify({ values: [objectToRow(tableName, obj)] }),
     })
-    invalidateCache(tableName)
+    mutateCacheAfterWrite(tableName, (rows) => [...rows, obj])
     return obj
   })
 }
@@ -175,7 +187,7 @@ export async function updateRow(tableName, id, patch) {
     if (!match) throw new Error(`No se encontró la fila ${id} en ${tableName}`)
     const merged = { ...match.obj, ...cleanPatch, [idColumn]: match.obj[idColumn] }
     await patchRowAtIndex(tableName, match.index, merged)
-    invalidateCache(tableName)
+    mutateCacheAfterWrite(tableName, (rows) => rows.map((r) => (String(r[idColumn]) === String(id) ? merged : r)))
     return merged
   })
 }
@@ -188,10 +200,10 @@ export async function deleteRow(tableName, id) {
     if (!match) return false
     const itemId = await getWorkbookItemId()
     const upn = getServiceUpn()
-    await graphJson(`${workbookBase(itemId, upn)}/tables/${tableName}/rows/itemAt(index=${match.index})/delete`, {
-      method: 'POST',
+    await graphJson(`${workbookBase(itemId, upn)}/tables/${tableName}/rows/itemAt(index=${match.index})`, {
+      method: 'DELETE',
     })
-    invalidateCache(tableName)
+    mutateCacheAfterWrite(tableName, (rows) => rows.filter((r) => String(r[idColumn]) !== String(id)))
     return true
   })
 }
