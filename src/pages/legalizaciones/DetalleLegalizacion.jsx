@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useParams } from 'react-router-dom'
 import { api } from '../../lib/api.js'
 import { useAuth } from '../../context/AuthContext.jsx'
+import { AttachmentsPanel } from '../../components/AttachmentsPanel.jsx'
 import { formatCOP, formatDate, formatDateTime } from '../../lib/constants.js'
 
 export function DetalleLegalizacion() {
@@ -40,6 +41,7 @@ export function DetalleLegalizacion() {
             <Detail label="Fecha solicitud anticipo" value={formatDate(l.fechaSolicitudAnticipo)} />
             <Detail label="Solicitante" value={l.solicitante?.name} />
             <Detail label="NIT/CC" value={l.nitCc} />
+            {l.destinatarios && <Detail label="Destinatarios notificados" value={l.destinatarios} />}
           </dl>
         </section>
 
@@ -85,6 +87,13 @@ export function DetalleLegalizacion() {
             />
           </dl>
         </section>
+
+        <AttachmentsPanel
+          relatedType="LEGALIZACION"
+          relatedId={l.id}
+          attachments={l.attachments}
+          queryKey={['legalizacion', id]}
+        />
 
         <section className="rounded-xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900">
           <h2 className="mb-3 text-lg font-semibold">Firmas</h2>

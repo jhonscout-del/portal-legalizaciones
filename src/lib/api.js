@@ -1,7 +1,7 @@
 async function request(path, options = {}) {
   const res = await fetch(`/api${path}`, {
     credentials: 'include',
-    headers: options.body ? { 'Content-Type': 'application/json' } : undefined,
+    headers: options.body && !(options.body instanceof FormData) ? { 'Content-Type': 'application/json' } : undefined,
     ...options,
   })
 
@@ -25,4 +25,9 @@ export const api = {
   post: (path, data) => request(path, { method: 'POST', body: JSON.stringify(data) }),
   put: (path, data) => request(path, { method: 'PUT', body: JSON.stringify(data) }),
   del: (path) => request(path, { method: 'DELETE' }),
+  upload: (path, file) => {
+    const formData = new FormData()
+    formData.append('file', file)
+    return request(path, { method: 'POST', body: formData })
+  },
 }

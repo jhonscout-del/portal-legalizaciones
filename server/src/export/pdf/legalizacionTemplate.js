@@ -1,6 +1,6 @@
 import React from 'react'
 import { Document, Page, Text, View, renderToStream } from '@react-pdf/renderer'
-import { styles, CCCM_FOOTER, formatCOP, formatDate, formatDateTime } from './shared.js'
+import { styles, CCCM_FOOTER, formatCOP, formatDate, SignatureBox, AttachmentsSection } from './shared.js'
 
 const h = React.createElement
 
@@ -77,15 +77,23 @@ function LegalizacionDoc({ legalizacion }) {
         ]),
       ]),
 
+      h(AttachmentsSection, { key: 'attachments', attachments: legalizacion.attachments }),
+
       h(View, { key: 'sig', style: styles.signatures }, [
-        h(View, { key: 'b1', style: styles.signatureBox }, [
-          h(View, { style: styles.signatureLine }, h(Text, null, 'Firma solicitante')),
-          h(Text, null, legalizacion.firmaSolicitanteAt ? formatDateTime(legalizacion.firmaSolicitanteAt) : 'Pendiente'),
-        ]),
-        h(View, { key: 'b2', style: styles.signatureBox }, [
-          h(View, { style: styles.signatureLine }, h(Text, null, 'Firma contabilidad')),
-          h(Text, null, legalizacion.firmaContableAt ? formatDateTime(legalizacion.firmaContableAt) : 'Pendiente'),
-        ]),
+        h(SignatureBox, {
+          key: 'b1',
+          boxStyle: styles.signatureBox,
+          label: 'Firma solicitante',
+          user: legalizacion.firmaSolicitanteAt ? legalizacion.solicitante : null,
+          at: legalizacion.firmaSolicitanteAt,
+        }),
+        h(SignatureBox, {
+          key: 'b2',
+          boxStyle: styles.signatureBox,
+          label: 'Firma contabilidad',
+          user: legalizacion.firmaContablePor,
+          at: legalizacion.firmaContableAt,
+        }),
       ]),
 
       h(Text, { key: 'footer', style: styles.footer }, CCCM_FOOTER),

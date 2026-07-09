@@ -1,16 +1,20 @@
+import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link, useParams } from 'react-router-dom'
 import { api } from '../../lib/api.js'
+import { useAuth } from '../../context/AuthContext.jsx'
 import { StatusBadge } from '../../components/StatusBadge.jsx'
 import { TIPO_PARAM_TO_ENUM } from '../../schemas/solicitud.js'
 import { TIPO_SOLICITUD_LABELS, formatCOP, formatDate } from '../../lib/constants.js'
 
 export function ListadoSolicitudes() {
   const { tipo } = useParams()
+  const { user } = useAuth()
   const tipoEnum = TIPO_PARAM_TO_ENUM[tipo]
+  const [mine, setMine] = useState(true)
   const solicitudes = useQuery({
-    queryKey: ['solicitudes', tipoEnum],
-    queryFn: () => api.get(`/solicitudes?tipo=${tipoEnum}`),
+    queryKey: ['solicitudes', tipoEnum, mine],
+    queryFn: () => api.get(`/solicitudes?tipo=${tipoEnum}${mine ? '&mine=1' : ''}`),
   })
 
   return (
@@ -21,6 +25,11 @@ export function ListadoSolicitudes() {
           + Nueva solicitud
         </Link>
       </div>
+
+      <label className="mb-3 flex items-center gap-2 text-sm text-neutral-600 dark:text-neutral-400">
+        <input type="checkbox" checked={mine} onChange={(e) => setMine(e.target.checked)} />
+        Mostrar solo mis solicitudes ({user?.name})
+      </label>
 
       <div className="overflow-x-auto rounded-xl border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900">
         <table className="w-full text-left text-sm">

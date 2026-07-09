@@ -1,5 +1,6 @@
 export const ROLE_LABELS = {
   SOLICITANTE: 'Solicitante',
+  APROBADOR: 'Aprobador',
   CONTABLE: 'Contabilidad',
   ADMINISTRATIVO: 'Administrativo',
 }
@@ -13,8 +14,16 @@ export const TIPO_SOLICITUD_LABELS = {
 export const ESTADO_LABELS = {
   BORRADOR: 'Borrador',
   PENDIENTE: 'Pendiente',
+  RECHAZADA: 'Rechazada',
   APROBADA: 'Aprobada',
   LEGALIZADA: 'Legalizada',
+}
+
+export function formatFileSize(bytes) {
+  if (!bytes && bytes !== 0) return ''
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
 
 export const CONCEPTOS_POR_TIPO = {

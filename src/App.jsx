@@ -5,6 +5,8 @@ import { AuthProvider, useAuth } from './context/AuthContext.jsx'
 import { AppLayout } from './components/AppLayout.jsx'
 import { Login } from './pages/Login.jsx'
 import { Dashboard } from './pages/Dashboard.jsx'
+import { Perfil } from './pages/Perfil.jsx'
+import { BandejaAprobacion } from './pages/BandejaAprobacion.jsx'
 import { BusinessUnitsProjects } from './pages/catalogo/BusinessUnitsProjects.jsx'
 import { UsersRoles } from './pages/catalogo/UsersRoles.jsx'
 import { NuevaSolicitud } from './pages/solicitudes/NuevaSolicitud.jsx'
@@ -24,9 +26,9 @@ function RequireAuth({ children }) {
   return children
 }
 
-function RequireRole({ role, children }) {
+function RequireRole({ roles, children }) {
   const { user } = useAuth()
-  if (user?.role !== role) return <Navigate to="/" replace />
+  if (!roles.includes(user?.role)) return <Navigate to="/" replace />
   return children
 }
 
@@ -43,7 +45,17 @@ function AppRoutes() {
         }
       >
         <Route index element={<Dashboard />} />
+        <Route path="perfil" element={<Perfil />} />
+        <Route
+          path="bandeja"
+          element={
+            <RequireRole roles={['APROBADOR', 'CONTABLE', 'ADMINISTRATIVO']}>
+              <BandejaAprobacion />
+            </RequireRole>
+          }
+        />
 
+        <Route path="solicitudes/editar/:id" element={<NuevaSolicitud />} />
         <Route path="solicitudes/:tipo" element={<NuevaSolicitud />} />
         <Route path="solicitudes/:tipo/listado" element={<ListadoSolicitudes />} />
         <Route path="solicitudes/detalle/:id" element={<DetalleSolicitud />} />
@@ -59,7 +71,7 @@ function AppRoutes() {
         <Route
           path="catalogo/proyectos"
           element={
-            <RequireRole role="ADMINISTRATIVO">
+            <RequireRole roles={['ADMINISTRATIVO']}>
               <BusinessUnitsProjects />
             </RequireRole>
           }
@@ -67,7 +79,7 @@ function AppRoutes() {
         <Route
           path="catalogo/usuarios"
           element={
-            <RequireRole role="ADMINISTRATIVO">
+            <RequireRole roles={['ADMINISTRATIVO']}>
               <UsersRoles />
             </RequireRole>
           }

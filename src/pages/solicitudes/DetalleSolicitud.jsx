@@ -1,8 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useParams } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 import { api } from '../../lib/api.js'
 import { useAuth } from '../../context/AuthContext.jsx'
 import { StatusBadge } from '../../components/StatusBadge.jsx'
+import { AttachmentsPanel } from '../../components/AttachmentsPanel.jsx'
 import { TIPO_SOLICITUD_LABELS, formatCOP, formatDate, formatDateTime } from '../../lib/constants.js'
 
 export function DetalleSolicitud() {
@@ -11,18 +12,40 @@ export function DetalleSolicitud() {
   const queryClient = useQueryClient()
   const { data: s, isLoading } = useQuery({ queryKey: ['solicitud', id], queryFn: () => api.get(`/solicitudes/${id}`) })
 
+  function invalidate() {
+    queryClient.invalidateQueries({ queryKey: ['solicitud', id] })
+    queryClient.invalidateQueries({ queryKey: ['solicitudes'] })
+  }
+
+  const vistoBuenoAprobador = useMutation({
+    mutationFn: () => api.post(`/solicitudes/${id}/visto-bueno-aprobador`),
+    onSuccess: invalidate,
+  })
   const vistoBuenoContable = useMutation({
     mutationFn: () => api.post(`/solicitudes/${id}/visto-bueno-contable`),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['solicitud', id] }),
+    onSuccess: invalidate,
   })
   const vistoBuenoAdmin = useMutation({
     mutationFn: () => api.post(`/solicitudes/${id}/visto-bueno-administrativo`),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['solicitud', id] }),
+    onSuccess: invalidate,
+  })
+  const rechazar = useMutation({
+    mutationFn: (comentario) => api.post(`/solicitudes/${id}/rechazar`, { comentario }),
+    onSuccess: invalidate,
   })
 
   if (isLoading || !s) return <p>Cargando…</p>
 
   const total = s.items.reduce((sum, i) => sum + i.valor, 0)
+  const isOwner = user?.id === s.solicitanteId
+  const canEdit = ['PENDIENTE', 'RECHAZADA'].includes(s.estado) && (isOwner || user?.role === 'ADMINISTRATIVO')
+  const canReject = s.estado === 'PENDIENTE' && ['APROBADOR', 'CONTABLE', 'ADMINISTRATIVO'].includes(user?.role)
+
+  function handleReject() {
+    const comentario = window.prompt('Motivo del rechazo (se notificará al solicitante):')
+    if (comentario === null) return
+    rechazar.mutate(comentario)
+  }
 
   return (
     <div className="max-w-4xl">
@@ -32,12 +55,32 @@ export function DetalleSolicitud() {
           <div className="mt-1"><StatusBadge estado={s.estado} /></div>
         </div>
         <div className="flex gap-2">
+          {canEdit && (
+            <Link to={`/solicitudes/editar/${s.id}`} className="rounded-md border border-neutral-300 px-3 py-1.5 text-sm dark:border-neutral-700">
+              Editar
+            </Link>
+          )}
+          {canReject && (
+            <button onClick={handleReject} className="rounded-md border border-red-300 px-3 py-1.5 text-sm text-red-700 dark:border-red-800 dark:text-red-400">
+              Rechazar
+            </button>
+          )}
           <a href={`/api/solicitudes/${s.id}/export.pdf`} className="rounded-md border border-neutral-300 px-3 py-1.5 text-sm dark:border-neutral-700">Exportar PDF</a>
           <a href={`/api/solicitudes/${s.id}/export.xlsx`} className="rounded-md border border-neutral-300 px-3 py-1.5 text-sm dark:border-neutral-700">Exportar Excel</a>
         </div>
       </div>
 
       <div className="flex flex-col gap-6">
+        {s.estado === 'RECHAZADA' && (
+          <section className="rounded-xl border border-red-300 bg-red-50 p-5 dark:border-red-900 dark:bg-red-950/30">
+            <h2 className="mb-1 text-lg font-semibold text-red-800 dark:text-red-300">Solicitud rechazada</h2>
+            <p className="text-sm text-red-700 dark:text-red-400">
+              {s.rechazadoPor?.name} — {formatDateTime(s.rechazadoAt)}
+            </p>
+            {s.comentarioRechazo && <p className="mt-1 text-sm text-red-700 dark:text-red-400">"{s.comentarioRechazo}"</p>}
+          </section>
+        )}
+
         <section className="rounded-xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900">
           <h2 className="mb-3 text-lg font-semibold">Datos generales</h2>
           <dl className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
@@ -49,6 +92,7 @@ export function DetalleSolicitud() {
             <Detail label="Con cargo a" value={`${s.project?.businessUnit?.code} - ${s.project?.businessUnit?.name} (${s.project?.name})`} />
             <Detail label="Donante" value={s.project?.businessUnit?.donor} />
             <Detail label="Por concepto de" value={s.porConceptoDe} />
+            {s.destinatarios && <Detail label="Destinatarios notificados" value={s.destinatarios} />}
           </dl>
         </section>
 
@@ -89,24 +133,47 @@ export function DetalleSolicitud() {
           </dl>
         </section>
 
+        <AttachmentsPanel
+          relatedType="SOLICITUD"
+          relatedId={s.id}
+          attachments={s.attachments}
+          queryKey={['solicitud', id]}
+        />
+
         <section className="rounded-xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900">
           <h2 className="mb-3 text-lg font-semibold">Firmas y vistos buenos</h2>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <SignBlock label="Solicitante" name={s.solicitante?.name} />
             <div>
-              <SignBlock label="Visto bueno contable" name={s.vistoBuenoContable?.name} at={s.vistoBuenoContableAt} />
-              {user?.role === 'CONTABLE' && !s.vistoBuenoContable && (
-                <button onClick={() => vistoBuenoContable.mutate()} className="mt-2 rounded-md bg-sky-600 px-3 py-1.5 text-sm text-white hover:bg-sky-700">
+              <SignBlock label="Visto bueno aprobador" name={s.vistoBuenoAprobador?.name} at={s.vistoBuenoAprobadorAt} />
+              {user?.role === 'APROBADOR' && s.estado === 'PENDIENTE' && !s.vistoBuenoAprobador && (
+                <button onClick={() => vistoBuenoAprobador.mutate()} className="mt-2 rounded-md bg-sky-600 px-3 py-1.5 text-sm text-white hover:bg-sky-700">
                   Dar visto bueno
                 </button>
               )}
             </div>
             <div>
+              <SignBlock label="Visto bueno contable" name={s.vistoBuenoContable?.name} at={s.vistoBuenoContableAt} />
+              {user?.role === 'CONTABLE' && s.estado === 'PENDIENTE' && !s.vistoBuenoContable && (
+                s.vistoBuenoAprobador ? (
+                  <button onClick={() => vistoBuenoContable.mutate()} className="mt-2 rounded-md bg-sky-600 px-3 py-1.5 text-sm text-white hover:bg-sky-700">
+                    Dar visto bueno
+                  </button>
+                ) : (
+                  <p className="mt-2 text-xs text-neutral-500">Falta el visto bueno del aprobador</p>
+                )
+              )}
+            </div>
+            <div>
               <SignBlock label="Visto bueno administrativo" name={s.vistoBuenoAdmin?.name} at={s.vistoBuenoAdminAt} />
-              {user?.role === 'ADMINISTRATIVO' && !s.vistoBuenoAdmin && (
-                <button onClick={() => vistoBuenoAdmin.mutate()} className="mt-2 rounded-md bg-sky-600 px-3 py-1.5 text-sm text-white hover:bg-sky-700">
-                  Dar visto bueno
-                </button>
+              {user?.role === 'ADMINISTRATIVO' && s.estado === 'PENDIENTE' && !s.vistoBuenoAdmin && (
+                s.vistoBuenoContable ? (
+                  <button onClick={() => vistoBuenoAdmin.mutate()} className="mt-2 rounded-md bg-sky-600 px-3 py-1.5 text-sm text-white hover:bg-sky-700">
+                    Dar visto bueno
+                  </button>
+                ) : (
+                  <p className="mt-2 text-xs text-neutral-500">Falta el visto bueno contable</p>
+                )
               )}
             </div>
           </div>

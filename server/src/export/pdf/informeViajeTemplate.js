@@ -1,6 +1,6 @@
 import React from 'react'
 import { Document, Page, Text, View, renderToStream } from '@react-pdf/renderer'
-import { styles, CCCM_FOOTER, formatDate } from './shared.js'
+import { styles, CCCM_FOOTER, formatDate, SignatureBox, AttachmentsSection } from './shared.js'
 
 const h = React.createElement
 
@@ -53,11 +53,10 @@ function InformeViajeDoc({ informe }) {
         h(Text, { style: { lineHeight: 1.5 } }, informe.descripcionActividad),
       ]),
 
+      h(AttachmentsSection, { key: 'attachments', attachments: informe.attachments }),
+
       h(View, { key: 'sig', style: styles.signatures }, [
-        h(View, { key: 'b1', style: styles.signatureBox }, [
-          h(View, { style: styles.signatureLine }, h(Text, null, 'Elaborado por')),
-          h(Text, null, informe.elaboradoPor?.name ?? ''),
-        ]),
+        h(SignatureBox, { key: 'b1', boxStyle: styles.signatureBox, label: 'Elaborado por', user: informe.elaboradoPor, at: informe.createdAt }),
       ]),
 
       h(Text, { key: 'footer', style: styles.footer }, CCCM_FOOTER),

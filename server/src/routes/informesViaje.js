@@ -3,6 +3,8 @@ import { prisma } from '../lib/prisma.js'
 import { requireAuth } from '../middleware/auth.js'
 import { renderInformeViajePdf } from '../export/pdf/informeViajeTemplate.js'
 import { buildInformeViajeWorkbook } from '../export/excel/informeViajeWorkbook.js'
+import { listAttachments } from './attachments.js'
+import { sendMailToRecipients } from '../lib/graphMail.js'
 
 export const informesViajeRouter = Router()
 
@@ -13,6 +15,11 @@ const include = {
   elaboradoPor: true,
 }
 
+async function withAttachments(informe) {
+  const attachments = await listAttachments('INFORME_VIAJE', informe.id)
+  return { ...informe, attachments }
+}
+
 informesViajeRouter.get('/', async (req, res) => {
   const informes = await prisma.informeViaje.findMany({ include, orderBy: { createdAt: 'desc' } })
   res.json(informes)
@@ -21,13 +28,14 @@ informesViajeRouter.get('/', async (req, res) => {
 informesViajeRouter.get('/:id', async (req, res) => {
   const informe = await prisma.informeViaje.findUnique({ where: { id: Number(req.params.id) }, include })
   if (!informe) return res.status(404).json({ error: 'No encontrado' })
-  res.json(informe)
+  res.json(await withAttachments(informe))
 })
 
 informesViajeRouter.post('/', async (req, res) => {
   const {
     fechaInicioViaje, duracionDias, nombreSolicitante, documentoIdentidad,
     direccion, telefono, ciudad, ruta, projectId, tituloReferencia, objetoViaje, descripcionActividad,
+    destinatarios,
   } = req.body
 
   if (!fechaInicioViaje || !nombreSolicitante || !projectId || !descripcionActividad) {
@@ -48,11 +56,21 @@ informesViajeRouter.post('/', async (req, res) => {
       tituloReferencia,
       objetoViaje,
       descripcionActividad,
+      destinatarios: destinatarios || null,
       elaboradoPorId: req.session.user.id,
     },
     include,
   })
-  res.status(201).json(informe)
+
+  if (destinatarios) {
+    sendMailToRecipients({
+      to: destinatarios,
+      subject: `Nuevo informe de viaje No. ${informe.id}`,
+      html: `<p>Se registró el informe de viaje No. ${informe.id} de ${nombreSolicitante}.</p>`,
+    }).catch((err) => console.error('Error enviando correo de informe de viaje:', err.message))
+  }
+
+  res.status(201).json(await withAttachments(informe))
 })
 
 informesViajeRouter.get('/:id/export.pdf', async (req, res) => {

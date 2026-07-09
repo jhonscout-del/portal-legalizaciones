@@ -15,7 +15,7 @@ export function NuevoInforme() {
     defaultValues: {
       fechaInicioViaje: new Date().toISOString().slice(0, 10), duracionDias: '',
       nombreSolicitante: '', documentoIdentidad: '', direccion: '', telefono: '', ciudad: '',
-      ruta: '', projectId: '', tituloReferencia: '', objetoViaje: '', descripcionActividad: '',
+      ruta: '', projectId: '', tituloReferencia: '', objetoViaje: '', descripcionActividad: '', destinatarios: '',
     },
   })
 
@@ -80,6 +80,11 @@ export function NuevoInforme() {
             <div className="sm:col-span-2">
               <Field label="Descripción de la actividad realizada" error={errors.descripcionActividad}>
                 <textarea rows={6} {...register('descripcionActividad')} className="input" />
+              </Field>
+            </div>
+            <div className="sm:col-span-2">
+              <Field label="Destinatarios (correos separados por coma, opcional)" error={errors.destinatarios}>
+                <input {...register('destinatarios')} className="input" placeholder="persona1@correo.com, persona2@correo.com" />
               </Field>
             </div>
           </div>

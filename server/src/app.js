@@ -2,6 +2,7 @@ import 'dotenv/config'
 import express from 'express'
 import session from 'express-session'
 import cors from 'cors'
+import multer from 'multer'
 import { sessionStore } from './lib/sessionStore.js'
 import { authRouter } from './routes/auth.js'
 import { catalogoRouter } from './routes/catalogo.js'
@@ -9,6 +10,7 @@ import { solicitudesRouter } from './routes/solicitudes.js'
 import { legalizacionesRouter } from './routes/legalizaciones.js'
 import { informesViajeRouter } from './routes/informesViaje.js'
 import { usersRouter } from './routes/users.js'
+import { attachmentsRouter } from './routes/attachments.js'
 
 const app = express()
 
@@ -35,8 +37,15 @@ app.use('/api/solicitudes', solicitudesRouter)
 app.use('/api/legalizaciones', legalizacionesRouter)
 app.use('/api/informes-viaje', informesViajeRouter)
 app.use('/api/users', usersRouter)
+app.use('/api/attachments', attachmentsRouter)
 
 app.use((err, req, res, _next) => {
+  if (err instanceof multer.MulterError) {
+    return res.status(400).json({ error: `Archivo inválido: ${err.message}` })
+  }
+  if (err?.message?.includes('imagen PNG, JPEG o WEBP')) {
+    return res.status(400).json({ error: err.message })
+  }
   console.error(err)
   res.status(500).json({ error: 'Error interno del servidor' })
 })

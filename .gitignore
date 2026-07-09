@@ -18,6 +18,13 @@ server/prisma/dev.db
 server/prisma/dev.db-journal
 server/generated
 server/sessions
+server/uploads/*
+!server/uploads/attachments
+!server/uploads/signatures
+server/uploads/attachments/*
+server/uploads/signatures/*
+!server/uploads/attachments/.gitkeep
+!server/uploads/signatures/.gitkeep
 
 # Editor directories and files
 .vscode/*

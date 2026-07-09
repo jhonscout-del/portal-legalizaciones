@@ -4,6 +4,8 @@ import { requireAuth, requireRole } from '../middleware/auth.js'
 import { calcularRetefuente } from '../lib/retencion.js'
 import { renderLegalizacionPdf } from '../export/pdf/legalizacionTemplate.js'
 import { buildLegalizacionWorkbook } from '../export/excel/legalizacionWorkbook.js'
+import { listAttachments } from './attachments.js'
+import { sendMailToRecipients } from '../lib/graphMail.js'
 
 export const legalizacionesRouter = Router()
 
@@ -13,6 +15,7 @@ const include = {
   project: { include: { businessUnit: true } },
   solicitud: true,
   solicitante: true,
+  firmaContablePor: true,
   rubros: true,
 }
 
@@ -33,8 +36,11 @@ async function withResumen(legalizacion) {
 
   const saldo = legalizacion.valorAnticipo - legalizacionesAnteriores - legalizacionActual
 
+  const attachments = await listAttachments('LEGALIZACION', legalizacion.id)
+
   return {
     ...legalizacion,
+    attachments,
     resumen: {
       valorAnticipo: legalizacion.valorAnticipo,
       legalizacionesAnteriores,
@@ -57,7 +63,7 @@ legalizacionesRouter.get('/:id', async (req, res) => {
 })
 
 legalizacionesRouter.post('/', async (req, res) => {
-  const { projectId, solicitudId, fechaSolicitudAnticipo, valorAnticipo, nitCc, nombreActividad, rubros } = req.body
+  const { projectId, solicitudId, fechaSolicitudAnticipo, valorAnticipo, nitCc, nombreActividad, rubros, destinatarios } = req.body
 
   if (!projectId || !solicitudId || !rubros?.length) {
     return res.status(400).json({ error: 'Faltan campos obligatorios' })
@@ -73,6 +79,7 @@ legalizacionesRouter.post('/', async (req, res) => {
       valorAnticipo: Number(valorAnticipo),
       nitCc,
       nombreActividad,
+      destinatarios: destinatarios || null,
       solicitanteId: req.session.user.id,
       rubros: {
         create: rubros.map((r) => {
@@ -95,6 +102,15 @@ legalizacionesRouter.post('/', async (req, res) => {
     },
     include,
   })
+
+  if (destinatarios) {
+    sendMailToRecipients({
+      to: destinatarios,
+      subject: `Nueva legalización No. ${legalizacion.id}`,
+      html: `<p>Se registró la legalización No. ${legalizacion.id} para la actividad "${nombreActividad}".</p>`,
+    }).catch((err) => console.error('Error enviando correo de legalización:', err.message))
+  }
+
   res.status(201).json(await withResumen(legalizacion))
 })
 
@@ -110,7 +126,7 @@ legalizacionesRouter.post('/:id/firma-solicitante', async (req, res) => {
 legalizacionesRouter.post('/:id/firma-contable', requireRole('CONTABLE'), async (req, res) => {
   const legalizacion = await prisma.legalizacion.update({
     where: { id: Number(req.params.id) },
-    data: { firmaContableAt: new Date() },
+    data: { firmaContablePorId: req.session.user.id, firmaContableAt: new Date() },
     include,
   })
   res.json(await withResumen(legalizacion))

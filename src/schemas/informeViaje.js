@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { destinatariosField } from './shared.js'
 
 export const informeViajeSchema = z.object({
   fechaInicioViaje: z.string().min(1, 'Requerido'),
@@ -13,4 +14,5 @@ export const informeViajeSchema = z.object({
   tituloReferencia: z.string().min(1, 'Requerido'),
   objetoViaje: z.string().min(1, 'Requerido'),
   descripcionActividad: z.string().min(1, 'Requerido'),
+  destinatarios: destinatariosField,
 })

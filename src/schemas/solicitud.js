@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { destinatariosField } from './shared.js'
 
 export const TIPO_PARAM_TO_ENUM = {
   viaticos: 'VIATICOS',
@@ -29,4 +30,5 @@ export const solicitudSchema = z.object({
   aNombreDe: z.string().min(1, 'Obligatorio'),
   cedulaNitTitular: z.string().min(1, 'Obligatorio'),
   items: z.array(itemSchema).min(1, 'Agrega al menos un concepto'),
+  destinatarios: destinatariosField,
 })

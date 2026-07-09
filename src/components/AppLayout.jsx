@@ -4,6 +4,7 @@ import { ROLE_LABELS } from '../lib/constants.js'
 
 const NAV_ITEMS = [
   { to: '/', label: 'Inicio', roles: null },
+  { to: '/bandeja', label: 'Bandeja de aprobación', roles: ['APROBADOR', 'CONTABLE', 'ADMINISTRATIVO'] },
   { to: '/solicitudes/viaticos', label: 'Solicitud de Viáticos', roles: null },
   { to: '/solicitudes/operacional', label: 'Solicitud Operacional', roles: null },
   { to: '/solicitudes/genero-erm', label: 'Solicitud Género y ERM', roles: null },
@@ -11,6 +12,7 @@ const NAV_ITEMS = [
   { to: '/informes-viaje', label: 'Informes de Viaje', roles: null },
   { to: '/catalogo/proyectos', label: 'Proyectos y Unidades de Negocio', roles: ['ADMINISTRATIVO'] },
   { to: '/catalogo/usuarios', label: 'Usuarios y Roles', roles: ['ADMINISTRATIVO'] },
+  { to: '/perfil', label: 'Mi perfil / firma', roles: null },
 ]
 
 export function AppLayout() {

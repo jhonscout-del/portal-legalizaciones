@@ -1,6 +1,6 @@
 import React from 'react'
 import { Document, Page, Text, View, renderToStream } from '@react-pdf/renderer'
-import { styles, CCCM_FOOTER, formatCOP, formatDate, formatDateTime } from './shared.js'
+import { styles, CCCM_FOOTER, formatCOP, formatDate, SignatureBox, AttachmentsSection } from './shared.js'
 
 const h = React.createElement
 
@@ -93,19 +93,13 @@ function SolicitudDoc({ solicitud }) {
         ]),
       ]),
 
+      h(AttachmentsSection, { key: 'attachments', attachments: solicitud.attachments }),
+
       h(View, { key: 'sig', style: styles.signatures }, [
-        h(View, { key: 'b1', style: styles.signatureBox }, [
-          h(View, { style: styles.signatureLine } , h(Text, null, 'Firma solicitante')),
-          h(Text, null, solicitud.solicitante?.name ?? ''),
-        ]),
-        h(View, { key: 'b2', style: styles.signatureBox }, [
-          h(View, { style: styles.signatureLine }, h(Text, null, 'Visto bueno contable')),
-          h(Text, null, solicitud.vistoBuenoContable ? `${solicitud.vistoBuenoContable.name} — ${formatDateTime(solicitud.vistoBuenoContableAt)}` : 'Pendiente'),
-        ]),
-        h(View, { key: 'b3', style: styles.signatureBox }, [
-          h(View, { style: styles.signatureLine }, h(Text, null, 'Visto bueno administrativo')),
-          h(Text, null, solicitud.vistoBuenoAdmin ? `${solicitud.vistoBuenoAdmin.name} — ${formatDateTime(solicitud.vistoBuenoAdminAt)}` : 'Pendiente'),
-        ]),
+        h(SignatureBox, { key: 'b1', boxStyle: styles.signatureBoxQuarter, label: 'Firma solicitante', user: solicitud.solicitante }),
+        h(SignatureBox, { key: 'b2', boxStyle: styles.signatureBoxQuarter, label: 'Visto bueno aprobador', user: solicitud.vistoBuenoAprobador, at: solicitud.vistoBuenoAprobadorAt }),
+        h(SignatureBox, { key: 'b3', boxStyle: styles.signatureBoxQuarter, label: 'Visto bueno contable', user: solicitud.vistoBuenoContable, at: solicitud.vistoBuenoContableAt }),
+        h(SignatureBox, { key: 'b4', boxStyle: styles.signatureBoxQuarter, label: 'Visto bueno administrativo', user: solicitud.vistoBuenoAdmin, at: solicitud.vistoBuenoAdminAt }),
       ]),
 
       h(Text, { key: 'footer', style: styles.footer }, CCCM_FOOTER),

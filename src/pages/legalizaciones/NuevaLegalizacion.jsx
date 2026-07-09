@@ -22,7 +22,7 @@ export function NuevaLegalizacion() {
     resolver: zodResolver(legalizacionSchema),
     defaultValues: {
       solicitudId: '', projectId: '', fechaSolicitudAnticipo: '', valorAnticipo: '',
-      nitCc: '', nombreActividad: '', rubros: [emptyRubro],
+      nitCc: '', nombreActividad: '', rubros: [emptyRubro], destinatarios: '',
     },
   })
 
@@ -93,6 +93,11 @@ export function NuevaLegalizacion() {
             <Field label="NIT/CC" error={errors.nitCc}>
               <input {...register('nitCc')} className="input" />
             </Field>
+            <div className="sm:col-span-2">
+              <Field label="Destinatarios (correos separados por coma, opcional)" error={errors.destinatarios}>
+                <input {...register('destinatarios')} className="input" placeholder="persona1@correo.com, persona2@correo.com" />
+              </Field>
+            </div>
           </div>
         </section>
 

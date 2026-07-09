@@ -9,6 +9,7 @@ datasource db {
 
 enum Role {
   SOLICITANTE
+  APROBADOR
   CONTABLE
   ADMINISTRATIVO
 }
@@ -22,6 +23,7 @@ enum TipoSolicitud {
 enum EstadoSolicitud {
   BORRADOR
   PENDIENTE
+  RECHAZADA
   APROBADA
   LEGALIZADA
 }
@@ -31,19 +33,30 @@ enum SeccionRubro {
   B_FACTURA_RETENCION
 }
 
-model User {
-  id            Int      @id @default(autoincrement())
-  name          String
-  email         String   @unique
-  microsoftOid  String   @unique
-  role          Role     @default(SOLICITANTE)
-  createdAt     DateTime @default(now())
+enum RelatedType {
+  SOLICITUD
+  LEGALIZACION
+  INFORME_VIAJE
+}
 
-  solicitudesCreadas   SolicitudRecurso[] @relation("SolicitudSolicitante")
-  vistosBuenoContable  SolicitudRecurso[] @relation("SolicitudVistoBuenoContable")
-  vistosBuenoAdmin     SolicitudRecurso[] @relation("SolicitudVistoBuenoAdmin")
-  legalizacionesCreadas Legalizacion[]    @relation("LegalizacionSolicitante")
-  informesViaje        InformeViaje[]     @relation("InformeElaboradoPor")
+model User {
+  id               Int      @id @default(autoincrement())
+  name             String
+  email            String   @unique
+  microsoftOid     String   @unique
+  role             Role     @default(SOLICITANTE)
+  signatureImagePath String?
+  createdAt        DateTime @default(now())
+
+  solicitudesCreadas    SolicitudRecurso[] @relation("SolicitudSolicitante")
+  vistosBuenoAprobador  SolicitudRecurso[] @relation("SolicitudVistoBuenoAprobador")
+  vistosBuenoContable   SolicitudRecurso[] @relation("SolicitudVistoBuenoContable")
+  vistosBuenoAdmin      SolicitudRecurso[] @relation("SolicitudVistoBuenoAdmin")
+  solicitudesRechazadas SolicitudRecurso[] @relation("SolicitudRechazadaPor")
+  legalizacionesCreadas Legalizacion[]     @relation("LegalizacionSolicitante")
+  legalizacionesFirmadasContable Legalizacion[] @relation("LegalizacionFirmaContable")
+  informesViaje         InformeViaje[]     @relation("InformeElaboradoPor")
+  attachments           Attachment[]       @relation("AttachmentUploadedBy")
 }
 
 model BusinessUnit {
@@ -84,9 +97,14 @@ model SolicitudRecurso {
   aNombreDe       String
   cedulaNitTitular String
   estado          EstadoSolicitud @default(BORRADOR)
+  destinatarios   String?
 
   solicitanteId   Int
   solicitante     User            @relation("SolicitudSolicitante", fields: [solicitanteId], references: [id])
+
+  vistoBuenoAprobadorId  Int?
+  vistoBuenoAprobador    User?    @relation("SolicitudVistoBuenoAprobador", fields: [vistoBuenoAprobadorId], references: [id])
+  vistoBuenoAprobadorAt  DateTime?
 
   vistoBuenoContableId   Int?
   vistoBuenoContable     User?    @relation("SolicitudVistoBuenoContable", fields: [vistoBuenoContableId], references: [id])
@@ -95,6 +113,11 @@ model SolicitudRecurso {
   vistoBuenoAdminId      Int?
   vistoBuenoAdmin        User?    @relation("SolicitudVistoBuenoAdmin", fields: [vistoBuenoAdminId], references: [id])
   vistoBuenoAdminAt      DateTime?
+
+  rechazadoPorId  Int?
+  rechazadoPor    User?    @relation("SolicitudRechazadaPor", fields: [rechazadoPorId], references: [id])
+  rechazadoAt     DateTime?
+  comentarioRechazo String?
 
   createdAt       DateTime        @default(now())
 
@@ -130,11 +153,15 @@ model Legalizacion {
   valorAnticipo          Float
   nitCc                  String
   nombreActividad        String
+  destinatarios          String?
 
   solicitanteId          Int
   solicitante            User     @relation("LegalizacionSolicitante", fields: [solicitanteId], references: [id])
 
   firmaSolicitanteAt     DateTime?
+
+  firmaContablePorId     Int?
+  firmaContablePor       User?    @relation("LegalizacionFirmaContable", fields: [firmaContablePorId], references: [id])
   firmaContableAt        DateTime?
 
   createdAt              DateTime @default(now())
@@ -171,9 +198,25 @@ model InformeViaje {
   tituloReferencia    String
   objetoViaje         String
   descripcionActividad String
+  destinatarios       String?
 
   elaboradoPorId      Int
   elaboradoPor        User     @relation("InformeElaboradoPor", fields: [elaboradoPorId], references: [id])
 
   createdAt           DateTime @default(now())
+}
+
+model Attachment {
+  id           Int         @id @default(autoincrement())
+  relatedType  RelatedType
+  relatedId    Int
+  filename     String
+  mimeType     String
+  size         Int
+  storagePath  String
+  uploadedById Int
+  uploadedBy   User        @relation("AttachmentUploadedBy", fields: [uploadedById], references: [id])
+  createdAt    DateTime    @default(now())
+
+  @@index([relatedType, relatedId])
 }

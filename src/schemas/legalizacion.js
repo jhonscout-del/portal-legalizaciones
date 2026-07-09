@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { destinatariosField } from './shared.js'
 
 const rubroSchema = z.object({
   seccion: z.enum(['A_SOPORTE', 'B_FACTURA_RETENCION']),
@@ -18,4 +19,5 @@ export const legalizacionSchema = z.object({
   nitCc: z.string().min(1, 'Requerido'),
   nombreActividad: z.string().min(1, 'Requerido'),
   rubros: z.array(rubroSchema).min(1, 'Agrega al menos un rubro'),
+  destinatarios: destinatariosField,
 })
