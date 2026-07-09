@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "mysql"
   url      = env("DATABASE_URL")
 }
 
@@ -89,7 +89,7 @@ model SolicitudRecurso {
   nitCc           String
   direccion       String
   telefono        String
-  porConceptoDe   String
+  porConceptoDe   String          @db.Text
   projectId       Int
   project         Project         @relation(fields: [projectId], references: [id])
   cuentaBancariaNo String
@@ -97,7 +97,7 @@ model SolicitudRecurso {
   aNombreDe       String
   cedulaNitTitular String
   estado          EstadoSolicitud @default(BORRADOR)
-  destinatarios   String?
+  destinatarios   String?         @db.Text
 
   solicitanteId   Int
   solicitante     User            @relation("SolicitudSolicitante", fields: [solicitanteId], references: [id])
@@ -117,7 +117,7 @@ model SolicitudRecurso {
   rechazadoPorId  Int?
   rechazadoPor    User?    @relation("SolicitudRechazadaPor", fields: [rechazadoPorId], references: [id])
   rechazadoAt     DateTime?
-  comentarioRechazo String?
+  comentarioRechazo String? @db.Text
 
   createdAt       DateTime        @default(now())
 
@@ -152,8 +152,8 @@ model Legalizacion {
   fechaSolicitudAnticipo DateTime
   valorAnticipo          Float
   nitCc                  String
-  nombreActividad        String
-  destinatarios          String?
+  nombreActividad        String   @db.Text
+  destinatarios          String?  @db.Text
 
   solicitanteId          Int
   solicitante            User     @relation("LegalizacionSolicitante", fields: [solicitanteId], references: [id])
@@ -196,9 +196,9 @@ model InformeViaje {
   projectId           Int
   project             Project  @relation(fields: [projectId], references: [id])
   tituloReferencia    String
-  objetoViaje         String
-  descripcionActividad String
-  destinatarios       String?
+  objetoViaje         String   @db.Text
+  descripcionActividad String  @db.Text
+  destinatarios       String?  @db.Text
 
   elaboradoPorId      Int
   elaboradoPor        User     @relation("InformeElaboradoPor", fields: [elaboradoPorId], references: [id])

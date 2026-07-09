@@ -1,19 +1,25 @@
-import fs from 'node:fs'
 import session from 'express-session'
-import FileStoreFactory from 'session-file-store'
+import MySQLStoreFactory from 'express-mysql-session'
 
-const FileStore = FileStoreFactory(session)
+const MySQLStore = MySQLStoreFactory(session)
 
-// SESSIONS_DIR permite apuntar a almacenamiento persistente en producción
-// (p. ej. Azure App Service borra la carpeta de la app en cada deploy, pero
-// /home sí persiste). En desarrollo local usa server/sessions por defecto.
-const sessionsPath =
-  process.env.SESSIONS_DIR || new URL('../../sessions', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1')
+const dbUrl = new URL(process.env.DATABASE_URL)
+const isLocalHost = ['localhost', '127.0.0.1'].includes(dbUrl.hostname)
 
-fs.mkdirSync(sessionsPath, { recursive: true })
-
-export const sessionStore = new FileStore({
-  path: sessionsPath,
-  ttl: 8 * 60 * 60,
-  logFn: () => {},
+export const sessionStore = new MySQLStore({
+  host: dbUrl.hostname,
+  port: Number(dbUrl.port) || 3306,
+  user: decodeURIComponent(dbUrl.username),
+  password: decodeURIComponent(dbUrl.password),
+  database: dbUrl.pathname.replace(/^\//, '').split('?')[0],
+  // Azure Database for MySQL exige TLS; un MySQL local de desarrollo normalmente no.
+  ssl: isLocalHost ? undefined : { rejectUnauthorized: true },
+  schema: {
+    tableName: 'sessions',
+    columnNames: {
+      session_id: 'session_id',
+      expires: 'expires',
+      data: 'data',
+    },
+  },
 })
