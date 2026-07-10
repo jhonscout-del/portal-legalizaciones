@@ -110,6 +110,19 @@ function notifySolicitante(solicitud, subject, html, senderUpn) {
     .catch((err) => console.error('Error notificando al solicitante:', err.message))
 }
 
+// Si el proyecto de la solicitud tiene un responsable asignado (Proyectos y
+// Unidades de Negocio), se le notifica solo a él; si no, se notifica a todos
+// los usuarios con rol Contabilidad.
+function notifyContable(solicitud, senderUpn) {
+  const subject = `Solicitud No. ${solicitud.id} pendiente de revisión contable`
+  const html = `<p>La solicitud No. ${solicitud.id} de ${solicitud.solicitante?.name ?? ''} está pendiente de tu visto bueno.</p>`
+  const responsableEmail = solicitud.project?.responsableEmail
+  const promise = responsableEmail
+    ? sendMailToRecipients({ to: responsableEmail, subject, html, senderUpn })
+    : notifyRoleHolders('CONTABLE', { subject, html, senderUpn })
+  promise.catch((err) => console.error('Error notificando a Contabilidad:', err.message))
+}
+
 solicitudesRouter.post('/:id/visto-bueno-aprobador', requireRole('APROBADOR'), async (req, res) => {
   const existing = await solicitudesRepo.getRawSolicitud(req.params.id)
   if (!existing || existing.estado !== 'PENDIENTE') return res.status(409).json({ error: 'La solicitud no está pendiente' })
@@ -122,11 +135,7 @@ solicitudesRouter.post('/:id/visto-bueno-aprobador', requireRole('APROBADOR'), a
     `<p>Tu solicitud No. ${solicitud.id} recibió el visto bueno del aprobador y pasó a revisión de Contabilidad.</p>`,
     senderUpn,
   )
-  notifyRoleHolders('CONTABLE', {
-    subject: `Solicitud No. ${solicitud.id} pendiente de revisión contable`,
-    html: `<p>La solicitud No. ${solicitud.id} de ${solicitud.solicitante?.name ?? ''} está pendiente de tu visto bueno.</p>`,
-    senderUpn,
-  }).catch((err) => console.error('Error notificando a Contabilidad:', err.message))
+  notifyContable(solicitud, senderUpn)
 
   res.json(await withAttachments(solicitud))
 })

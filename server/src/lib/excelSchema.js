@@ -31,7 +31,10 @@ export const TABLES = {
   Projects: {
     sheet: 'Projects',
     idColumn: 'id',
-    columns: ['id', 'name', 'businessUnitId', 'encargado', 'active'],
+    // 'responsableEmail' es el correo del responsable del proyecto para el
+    // área contable: al elegir el proyecto en una solicitud/legalización, la
+    // notificación de "lista para revisión contable" se dirige a este correo.
+    columns: ['id', 'name', 'businessUnitId', 'encargado', 'active', 'responsableEmail'],
     dateColumns: [],
     textColumns: [],
   },
@@ -72,8 +75,9 @@ export const TABLES = {
       'id', 'projectId', 'solicitudId', 'fechaSolicitudAnticipo', 'valorAnticipo', 'nitCc',
       'nombreActividad', 'destinatarios', 'solicitanteId',
       'firmaSolicitanteAt', 'firmaContablePorId', 'firmaContableAt', 'createdAt',
+      'vistoBuenoAprobadorId', 'vistoBuenoAprobadorAt',
     ],
-    dateColumns: ['fechaSolicitudAnticipo', 'firmaSolicitanteAt', 'firmaContableAt', 'createdAt'],
+    dateColumns: ['fechaSolicitudAnticipo', 'firmaSolicitanteAt', 'firmaContableAt', 'createdAt', 'vistoBuenoAprobadorAt'],
     textColumns: ['nitCc'],
   },
   RubrosLegalizacion: {

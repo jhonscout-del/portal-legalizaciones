@@ -1,5 +1,6 @@
 import { listRows, findRow, findRows, insertRow, updateRow } from '../excelDb.js'
 import { calcularRetefuente } from '../retencion.js'
+import { listUsers } from './users.js'
 
 async function attachRelations(legalizacion) {
   if (!legalizacion) return null
@@ -7,7 +8,7 @@ async function attachRelations(legalizacion) {
     listRows('Projects'),
     listRows('BusinessUnits'),
     listRows('SolicitudesRecurso'),
-    listRows('Users'),
+    listUsers(),
     findRows('RubrosLegalizacion', (r) => Number(r.legalizacionId) === Number(legalizacion.id)),
   ])
   const usersById = new Map(users.map((u) => [String(u.id), u]))
@@ -20,6 +21,7 @@ async function attachRelations(legalizacion) {
     project: project ? { ...project, businessUnit } : null,
     solicitud: solicitudes.find((s) => String(s.id) === String(legalizacion.solicitudId)) ?? null,
     solicitante: byId(legalizacion.solicitanteId),
+    vistoBuenoAprobador: byId(legalizacion.vistoBuenoAprobadorId),
     firmaContablePor: byId(legalizacion.firmaContablePorId),
     rubros,
   }
@@ -59,11 +61,20 @@ export async function withResumen(legalizacion) {
   }
 }
 
-export async function listLegalizaciones() {
-  const rows = await listRows('Legalizaciones')
+export async function listLegalizaciones({ bandeja } = {}) {
+  let rows = await listRows('Legalizaciones')
+  if (bandeja === 'aprobador') {
+    rows = rows.filter((l) => !l.vistoBuenoAprobadorId)
+  } else if (bandeja === 'contable') {
+    rows = rows.filter((l) => l.vistoBuenoAprobadorId && !l.firmaContableAt)
+  }
   const sorted = [...rows].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
   const joined = await Promise.all(sorted.map(attachRelations))
   return Promise.all(joined.map(withResumen))
+}
+
+export async function getRawLegalizacion(id) {
+  return findRow('Legalizaciones', id)
 }
 
 export async function getLegalizacion(id) {
@@ -88,6 +99,8 @@ export async function createLegalizacion(data, rubros, solicitanteId) {
     firmaContablePorId: null,
     firmaContableAt: null,
     createdAt: new Date().toISOString(),
+    vistoBuenoAprobadorId: null,
+    vistoBuenoAprobadorAt: null,
   })
 
   for (const r of rubros) {
@@ -107,6 +120,14 @@ export async function createLegalizacion(data, rubros, solicitanteId) {
   }
 
   return getLegalizacion(legalizacion.id)
+}
+
+export async function setVistoBuenoAprobador(id, userId) {
+  await updateRow('Legalizaciones', id, {
+    vistoBuenoAprobadorId: userId,
+    vistoBuenoAprobadorAt: new Date().toISOString(),
+  })
+  return getLegalizacion(id)
 }
 
 export async function setFirmaSolicitante(id) {

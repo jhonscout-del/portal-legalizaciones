@@ -31,14 +31,14 @@ catalogoRouter.get('/projects', async (req, res) => {
 })
 
 catalogoRouter.post('/projects', requireRole('ADMINISTRATIVO'), async (req, res) => {
-  const { name, businessUnitId, encargado, active } = req.body
-  const project = await catalogoRepo.createProject({ name, businessUnitId, encargado, active: active ?? true })
+  const { name, businessUnitId, encargado, active, responsableEmail } = req.body
+  const project = await catalogoRepo.createProject({ name, businessUnitId, encargado, active: active ?? true, responsableEmail })
   res.status(201).json(project)
 })
 
 catalogoRouter.put('/projects/:id', requireRole('ADMINISTRATIVO'), async (req, res) => {
-  const { name, businessUnitId, encargado, active } = req.body
-  const project = await catalogoRepo.updateProject(req.params.id, { name, businessUnitId, encargado, active })
+  const { name, businessUnitId, encargado, active, responsableEmail } = req.body
+  const project = await catalogoRepo.updateProject(req.params.id, { name, businessUnitId, encargado, active, responsableEmail })
   res.json(project)
 })
 

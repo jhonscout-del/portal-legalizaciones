@@ -1,11 +1,11 @@
-import { listRows, findRow, findRows, insertRow, deleteRow } from '../excelDb.js'
+import { findRow, findRows, insertRow, deleteRow } from '../excelDb.js'
 import { uploadFile, downloadFile, deleteFile, ATTACHMENTS_FOLDER } from '../graphFiles.js'
-import { getUser } from './users.js'
+import { getUser, listUsers } from './users.js'
 
 export async function listAttachments(relatedType, relatedId) {
   const [rows, users] = await Promise.all([
     findRows('Attachments', (a) => a.relatedType === relatedType && Number(a.relatedId) === Number(relatedId)),
-    listRows('Users'),
+    listUsers(),
   ])
   const usersById = new Map(users.map((u) => [String(u.id), u]))
   return rows

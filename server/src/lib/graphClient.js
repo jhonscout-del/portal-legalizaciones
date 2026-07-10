@@ -79,6 +79,9 @@ export async function graphJson(path, options = {}) {
     const text = await res.text().catch(() => '')
     throw new Error(`Graph ${options.method || 'GET'} ${path} falló (${res.status}): ${text}`)
   }
-  if (res.status === 204) return null
-  return res.json()
+  // 202 (p. ej. sendMail) y 204 vienen sin cuerpo — res.json() lanzaría
+  // "Unexpected end of JSON input" si se intenta parsear un body vacío.
+  if (res.status === 204 || res.status === 202) return null
+  const text = await res.text()
+  return text ? JSON.parse(text) : null
 }

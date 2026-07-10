@@ -1,11 +1,12 @@
 import { listRows, findRow, insertRow } from '../excelDb.js'
+import { listUsers } from './users.js'
 
 async function attachRelations(informe) {
   if (!informe) return null
   const [projects, businessUnits, users] = await Promise.all([
     listRows('Projects'),
     listRows('BusinessUnits'),
-    listRows('Users'),
+    listUsers(),
   ])
   const project = projects.find((p) => String(p.id) === String(informe.projectId)) ?? null
   const businessUnit = project ? businessUnits.find((bu) => String(bu.id) === String(project.businessUnitId)) ?? null : null

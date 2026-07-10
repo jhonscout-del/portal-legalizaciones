@@ -31,22 +31,24 @@ export async function getProject(id) {
   return attachBusinessUnit(await findRow('Projects', id))
 }
 
-export async function createProject({ name, businessUnitId, encargado, active }) {
+export async function createProject({ name, businessUnitId, encargado, active, responsableEmail }) {
   const created = await insertRow('Projects', {
     name,
     businessUnitId: Number(businessUnitId),
     encargado,
     active: active ?? true,
+    responsableEmail: responsableEmail ? responsableEmail.toLowerCase().trim() : null,
   })
   return attachBusinessUnit(created)
 }
 
-export async function updateProject(id, { name, businessUnitId, encargado, active }) {
+export async function updateProject(id, { name, businessUnitId, encargado, active, responsableEmail }) {
   const updated = await updateRow('Projects', id, {
     name,
     businessUnitId: businessUnitId === undefined ? undefined : Number(businessUnitId),
     encargado,
     active,
+    responsableEmail: responsableEmail === undefined ? undefined : (responsableEmail ? responsableEmail.toLowerCase().trim() : null),
   })
   return attachBusinessUnit(updated)
 }

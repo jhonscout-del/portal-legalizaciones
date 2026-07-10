@@ -16,6 +16,10 @@ export function DetalleLegalizacion() {
     mutationFn: () => api.post(`/legalizaciones/${id}/firma-solicitante`),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['legalizacion', id] }),
   })
+  const vistoBuenoAprobador = useMutation({
+    mutationFn: () => api.post(`/legalizaciones/${id}/visto-bueno-aprobador`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['legalizacion', id] }),
+  })
   const firmaContable = useMutation({
     mutationFn: () => api.post(`/legalizaciones/${id}/firma-contable`),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['legalizacion', id] }),
@@ -100,13 +104,14 @@ export function DetalleLegalizacion() {
           eventos={[
             { label: 'Legalización creada', name: l.solicitante?.name, at: l.createdAt },
             { label: 'Firma del solicitante', name: l.solicitante?.name, at: l.firmaSolicitanteAt },
+            { label: 'Visto bueno del aprobador', name: l.vistoBuenoAprobador?.name, at: l.vistoBuenoAprobadorAt },
             { label: 'Firma contable', name: l.firmaContablePor?.name, at: l.firmaContableAt },
           ]}
         />
 
         <section className="rounded-xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900">
-          <h2 className="mb-3 text-lg font-semibold">Firmas</h2>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <h2 className="mb-3 text-lg font-semibold">Firmas y vistos buenos</h2>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <div>
               <p className="text-sm text-neutral-500">Firma solicitante</p>
               <p className="font-medium">{l.firmaSolicitanteAt ? formatDateTime(l.firmaSolicitanteAt) : 'Pendiente'}</p>
@@ -115,10 +120,21 @@ export function DetalleLegalizacion() {
               )}
             </div>
             <div>
+              <p className="text-sm text-neutral-500">Visto bueno aprobador</p>
+              <p className="font-medium">{l.vistoBuenoAprobadorAt ? formatDateTime(l.vistoBuenoAprobadorAt) : 'Pendiente'}</p>
+              {!l.vistoBuenoAprobadorAt && user?.roles?.includes('APROBADOR') && (
+                <button onClick={() => vistoBuenoAprobador.mutate()} className="mt-2 rounded-md bg-sky-600 px-3 py-1.5 text-sm text-white hover:bg-sky-700">Dar visto bueno</button>
+              )}
+            </div>
+            <div>
               <p className="text-sm text-neutral-500">Firma contabilidad</p>
               <p className="font-medium">{l.firmaContableAt ? formatDateTime(l.firmaContableAt) : 'Pendiente'}</p>
               {!l.firmaContableAt && user?.roles?.includes('CONTABLE') && (
-                <button onClick={() => firmaContable.mutate()} className="mt-2 rounded-md bg-sky-600 px-3 py-1.5 text-sm text-white hover:bg-sky-700">Firmar</button>
+                l.vistoBuenoAprobadorAt ? (
+                  <button onClick={() => firmaContable.mutate()} className="mt-2 rounded-md bg-sky-600 px-3 py-1.5 text-sm text-white hover:bg-sky-700">Firmar</button>
+                ) : (
+                  <p className="mt-2 text-xs text-neutral-500">Falta el visto bueno del aprobador</p>
+                )
               )}
             </div>
           </div>

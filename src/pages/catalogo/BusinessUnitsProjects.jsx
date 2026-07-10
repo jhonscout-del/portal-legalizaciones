@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '../../lib/api.js'
 
 const emptyUnit = { code: '', name: '', donor: '', active: true }
-const emptyProject = { name: '', businessUnitId: '', encargado: '', active: true }
+const emptyProject = { name: '', businessUnitId: '', encargado: '', active: true, responsableEmail: '' }
 
 function Section({ title, children }) {
   return (
@@ -55,6 +55,12 @@ export function BusinessUnitsProjects() {
   const toggleProjectActive = useMutation({
     mutationFn: (project) =>
       api.put(`/catalogo/projects/${project.id}`, { ...project, businessUnitId: project.businessUnitId, active: !project.active }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['projects'] }),
+  })
+
+  const updateProjectResponsable = useMutation({
+    mutationFn: ({ project, responsableEmail }) =>
+      api.put(`/catalogo/projects/${project.id}`, { ...project, businessUnitId: project.businessUnitId, responsableEmail }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['projects'] }),
   })
 
@@ -132,11 +138,21 @@ export function BusinessUnitsProjects() {
             ))}
           </select>
           <TextInput placeholder="Encargado" required value={projectForm.encargado} onChange={(e) => setProjectForm({ ...projectForm, encargado: e.target.value })} />
-          <button type="submit" disabled={createProject.isPending} className="rounded-md bg-neutral-900 px-3 py-1.5 text-sm text-white hover:bg-neutral-700 dark:bg-white dark:text-neutral-900">
+          <TextInput
+            type="email"
+            placeholder="Correo del responsable (contable, opcional)"
+            value={projectForm.responsableEmail}
+            onChange={(e) => setProjectForm({ ...projectForm, responsableEmail: e.target.value })}
+          />
+          <button type="submit" disabled={createProject.isPending} className="rounded-md bg-neutral-900 px-3 py-1.5 text-sm text-white hover:bg-neutral-700 dark:bg-white dark:text-neutral-900 sm:col-span-4">
             Agregar proyecto
           </button>
         </form>
         {createProject.isError && <p className="mb-2 text-sm text-red-600">{createProject.error.message}</p>}
+        <p className="mb-3 text-xs text-neutral-500">
+          El correo del responsable recibe la notificación de "solicitud lista para revisión contable" cuando se
+          elige este proyecto. Si se deja vacío, la notificación se envía a todos los usuarios con rol Contabilidad.
+        </p>
 
         <table className="w-full text-left text-sm">
           <thead>
@@ -145,6 +161,7 @@ export function BusinessUnitsProjects() {
               <th>Unidad de negocio</th>
               <th>Donante</th>
               <th>Encargado</th>
+              <th>Responsable (contable)</th>
               <th>Estado</th>
               <th></th>
             </tr>
@@ -156,6 +173,12 @@ export function BusinessUnitsProjects() {
                 <td>{p.businessUnit?.code} - {p.businessUnit?.name}</td>
                 <td>{p.businessUnit?.donor}</td>
                 <td>{p.encargado}</td>
+                <td>
+                  <ResponsableEmailCell
+                    project={p}
+                    onSave={(responsableEmail) => updateProjectResponsable.mutate({ project: p, responsableEmail })}
+                  />
+                </td>
                 <td>{p.active ? 'Vigente' : 'Histórico'}</td>
                 <td>
                   <button
@@ -171,6 +194,32 @@ export function BusinessUnitsProjects() {
           </tbody>
         </table>
       </Section>
+    </div>
+  )
+}
+
+function ResponsableEmailCell({ project, onSave }) {
+  const [value, setValue] = useState(project.responsableEmail || '')
+  const dirty = value !== (project.responsableEmail || '')
+
+  return (
+    <div className="flex items-center gap-1.5">
+      <input
+        type="email"
+        placeholder="correo@cccm.org"
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        className="w-44 rounded border border-neutral-300 px-1.5 py-1 text-xs dark:border-neutral-700 dark:bg-neutral-800"
+      />
+      {dirty && (
+        <button
+          type="button"
+          onClick={() => onSave(value.trim() || null)}
+          className="text-xs text-sky-600 hover:underline"
+        >
+          Guardar
+        </button>
+      )}
     </div>
   )
 }

@@ -1,4 +1,5 @@
 import { listRows, findRow, findRows, insertRow, updateRow, deleteRow } from '../excelDb.js'
+import { listUsers } from './users.js'
 
 export const EDITABLE_STATES = new Set(['PENDIENTE', 'RECHAZADA'])
 
@@ -7,7 +8,7 @@ async function attachRelations(solicitud) {
   const [projects, businessUnits, users, items] = await Promise.all([
     listRows('Projects'),
     listRows('BusinessUnits'),
-    listRows('Users'),
+    listUsers(),
     findRows('ConceptoItems', (i) => Number(i.solicitudId) === Number(solicitud.id)),
   ])
   const usersById = new Map(users.map((u) => [String(u.id), u]))
