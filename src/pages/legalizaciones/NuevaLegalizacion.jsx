@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useForm, useFieldArray } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -6,6 +6,7 @@ import { useNavigate, Link } from 'react-router-dom'
 import { api } from '../../lib/api.js'
 import { legalizacionSchema } from '../../schemas/legalizacion.js'
 import { formatCOP } from '../../lib/constants.js'
+import { StagedAttachments } from '../../components/StagedAttachments.jsx'
 
 const emptyRubro = { seccion: 'A_SOPORTE', fecha: '', nit: '', beneficiario: '', noFactura: '', concepto: '', valorFactura: '' }
 
@@ -29,6 +30,8 @@ export function NuevaLegalizacion() {
   const { fields, append, remove } = useFieldArray({ control, name: 'rubros' })
   const solicitudId = watch('solicitudId')
   const rubros = watch('rubros')
+  const [files, setFiles] = useState([])
+  const [uploadingFiles, setUploadingFiles] = useState(false)
 
   useEffect(() => {
     const s = solicitudes.data?.find((x) => String(x.id) === solicitudId)
@@ -54,7 +57,14 @@ export function NuevaLegalizacion() {
 
   const create = useMutation({
     mutationFn: (data) => api.post('/legalizaciones', data),
-    onSuccess: (legalizacion) => {
+    onSuccess: async (legalizacion) => {
+      if (files.length > 0) {
+        setUploadingFiles(true)
+        for (const file of files) {
+          await api.upload(`/attachments/LEGALIZACION/${legalizacion.id}`, file).catch(() => {})
+        }
+        setUploadingFiles(false)
+      }
       queryClient.invalidateQueries({ queryKey: ['legalizaciones'] })
       navigate(`/legalizaciones/${legalizacion.id}`)
     },
@@ -141,10 +151,15 @@ export function NuevaLegalizacion() {
           </div>
         </section>
 
+        <section className="rounded-xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900">
+          <h2 className="mb-3 text-lg font-semibold">Archivos adjuntos</h2>
+          <StagedAttachments files={files} onChange={setFiles} />
+        </section>
+
         {create.isError && <p className="text-sm text-red-600">{create.error.message}</p>}
 
-        <button type="submit" disabled={create.isPending} className="self-start rounded-md bg-emerald-600 px-5 py-2.5 text-white hover:bg-emerald-700 disabled:opacity-50">
-          {create.isPending ? 'Guardando…' : 'Registrar legalización'}
+        <button type="submit" disabled={create.isPending || uploadingFiles} className="self-start rounded-md bg-emerald-600 px-5 py-2.5 text-white hover:bg-emerald-700 disabled:opacity-50">
+          {uploadingFiles ? 'Subiendo archivos…' : create.isPending ? 'Guardando…' : 'Registrar legalización'}
         </button>
       </form>
     </div>

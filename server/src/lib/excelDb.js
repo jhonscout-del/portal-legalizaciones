@@ -86,18 +86,6 @@ export function invalidateCache(tableName) {
   tableCache.delete(tableName)
 }
 
-// Tras escribir, el caché se actualiza directamente en vez de solo
-// invalidarlo: Graph puede tardar en reflejar una escritura reciente en una
-// lectura inmediatamente posterior (no usamos workbook sessions), así que
-// "invalidar y volver a pedirle a Graph" puede perder la fila que acabamos
-// de escribir (se confirmó en pruebas reales). Como ya sabemos exactamente
-// qué cambió, mutamos el caché en memoria en vez de volver a preguntarle a Graph.
-function mutateCacheAfterWrite(tableName, mutator) {
-  const cached = tableCache.get(tableName)
-  if (!cached) return // sin caché previo; la próxima lectura real irá a Graph
-  tableCache.set(tableName, { rows: mutator(cached.rows), fetchedAt: Date.now() })
-}
-
 export async function listRows(tableName) {
   const cached = tableCache.get(tableName)
   if (cached && Date.now() - cached.fetchedAt < CACHE_TTL_MS) return cached.rows
@@ -171,7 +159,23 @@ export async function insertRow(tableName, data) {
       method: 'POST',
       body: JSON.stringify({ values: [objectToRow(tableName, obj)] }),
     })
-    mutateCacheAfterWrite(tableName, (rows) => [...rows, obj])
+
+    const cached = tableCache.get(tableName)
+    if (cached) {
+      tableCache.set(tableName, { rows: [...cached.rows, obj], fetchedAt: Date.now() })
+    } else {
+      // Primera escritura en esta tabla en este proceso: no hay una base
+      // confiable en memoria a la cual simplemente anexarle esta fila (no
+      // sabemos si ya tenía otras). Se hace una lectura fresca para sembrar
+      // el caché completo; si por el retraso de propagación de Graph esa
+      // lectura todavía no trae la fila que acabamos de insertar, se agrega
+      // manualmente (ya sabemos que existe: la acabamos de crear) — se
+      // confirmó con pruebas reales que esta lectura puede llegar a fallar.
+      const raw = await fetchRawRows(tableName)
+      const rows = raw.map((r) => r.obj)
+      const already = rows.some((r) => String(r[idColumn]) === String(id))
+      tableCache.set(tableName, { rows: already ? rows : [...rows, obj], fetchedAt: Date.now() })
+    }
     return obj
   })
 }
@@ -187,7 +191,11 @@ export async function updateRow(tableName, id, patch) {
     if (!match) throw new Error(`No se encontró la fila ${id} en ${tableName}`)
     const merged = { ...match.obj, ...cleanPatch, [idColumn]: match.obj[idColumn] }
     await patchRowAtIndex(tableName, match.index, merged)
-    mutateCacheAfterWrite(tableName, (rows) => rows.map((r) => (String(r[idColumn]) === String(id) ? merged : r)))
+    // raw ya es una lectura fresca de justo antes de escribir — se usa como
+    // base del caché (en vez de solo mutar un caché previo, que podía no
+    // existir) para que quede sembrado sin depender de una lectura posterior.
+    const rows = raw.map((r) => (r.index === match.index ? merged : r.obj))
+    tableCache.set(tableName, { rows, fetchedAt: Date.now() })
     return merged
   })
 }
@@ -203,7 +211,8 @@ export async function deleteRow(tableName, id) {
     await graphJson(`${workbookBase(itemId, upn)}/tables/${tableName}/rows/itemAt(index=${match.index})`, {
       method: 'DELETE',
     })
-    mutateCacheAfterWrite(tableName, (rows) => rows.filter((r) => String(r[idColumn]) !== String(id)))
+    const rows = raw.filter((r) => r.index !== match.index).map((r) => r.obj)
+    tableCache.set(tableName, { rows, fetchedAt: Date.now() })
     return true
   })
 }

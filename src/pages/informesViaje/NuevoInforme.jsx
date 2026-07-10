@@ -1,14 +1,18 @@
+import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate, Link } from 'react-router-dom'
 import { api } from '../../lib/api.js'
 import { informeViajeSchema } from '../../schemas/informeViaje.js'
+import { StagedAttachments } from '../../components/StagedAttachments.jsx'
 
 export function NuevoInforme() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const projects = useQuery({ queryKey: ['projects'], queryFn: () => api.get('/catalogo/projects') })
+  const [files, setFiles] = useState([])
+  const [uploadingFiles, setUploadingFiles] = useState(false)
 
   const { register, handleSubmit, formState: { errors } } = useForm({
     resolver: zodResolver(informeViajeSchema),
@@ -21,7 +25,14 @@ export function NuevoInforme() {
 
   const create = useMutation({
     mutationFn: (data) => api.post('/informes-viaje', data),
-    onSuccess: (informe) => {
+    onSuccess: async (informe) => {
+      if (files.length > 0) {
+        setUploadingFiles(true)
+        for (const file of files) {
+          await api.upload(`/attachments/INFORME_VIAJE/${informe.id}`, file).catch(() => {})
+        }
+        setUploadingFiles(false)
+      }
       queryClient.invalidateQueries({ queryKey: ['informes-viaje'] })
       navigate(`/informes-viaje/${informe.id}`)
     },
@@ -90,10 +101,15 @@ export function NuevoInforme() {
           </div>
         </section>
 
+        <section className="rounded-xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900">
+          <h2 className="mb-3 text-lg font-semibold">Archivos adjuntos</h2>
+          <StagedAttachments files={files} onChange={setFiles} />
+        </section>
+
         {create.isError && <p className="text-sm text-red-600">{create.error.message}</p>}
 
-        <button type="submit" disabled={create.isPending} className="self-start rounded-md bg-emerald-600 px-5 py-2.5 text-white hover:bg-emerald-700 disabled:opacity-50">
-          {create.isPending ? 'Guardando…' : 'Guardar informe'}
+        <button type="submit" disabled={create.isPending || uploadingFiles} className="self-start rounded-md bg-emerald-600 px-5 py-2.5 text-white hover:bg-emerald-700 disabled:opacity-50">
+          {uploadingFiles ? 'Subiendo archivos…' : create.isPending ? 'Guardando…' : 'Guardar informe'}
         </button>
       </form>
     </div>
