@@ -12,10 +12,28 @@ usersRouter.get('/', requireRole('ADMINISTRATIVO'), async (req, res) => {
   res.json(await usersRepo.listUsers())
 })
 
-usersRouter.put('/:id/role', requireRole('ADMINISTRATIVO'), async (req, res) => {
-  const { role } = req.body
-  const user = await usersRepo.updateUserRole(req.params.id, role)
+usersRouter.put('/:id/roles', requireRole('ADMINISTRATIVO'), async (req, res) => {
+  const { roles } = req.body
+  if (!Array.isArray(roles) || roles.length === 0) {
+    return res.status(400).json({ error: 'roles debe ser una lista no vacía' })
+  }
+  if (roles.some((r) => !usersRepo.ALL_ROLES.includes(r))) {
+    return res.status(400).json({ error: 'Rol inválido' })
+  }
+  const user = await usersRepo.updateUserRoles(req.params.id, roles)
   res.json(user)
+})
+
+// Autoservicio: cualquier usuario declara quién es su aprobador. Esa persona
+// recibe automáticamente el rol APROBADOR (sin quitarle sus roles actuales).
+usersRouter.put('/me/aprobador', async (req, res) => {
+  const { aprobadorEmail } = req.body
+  if (aprobadorEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(aprobadorEmail)) {
+    return res.status(400).json({ error: 'Correo de aprobador inválido' })
+  }
+  const user = await usersRepo.setAprobadorEmail(req.session.user.id, aprobadorEmail || null)
+  req.session.user = { ...req.session.user, aprobadorEmail: user.aprobadorEmail }
+  res.json({ user: req.session.user })
 })
 
 function extname(filename) {

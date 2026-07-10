@@ -28,7 +28,7 @@ function RequireAuth({ children }) {
 
 function RequireRole({ roles, children }) {
   const { user } = useAuth()
-  if (!roles.includes(user?.role)) return <Navigate to="/" replace />
+  if (!roles.some((r) => user?.roles?.includes(r))) return <Navigate to="/" replace />
   return children
 }
 

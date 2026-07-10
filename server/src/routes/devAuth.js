@@ -14,6 +14,9 @@ devAuthRouter.post('/dev-login', async (req, res) => {
 
   const user = await usersRepo.upsertUserByEmail({ email: email.toLowerCase(), name: name || email, role })
 
-  req.session.user = { id: user.id, name: user.name, email: user.email, role: user.role, microsoftOid: user.microsoftOid }
+  req.session.user = {
+    id: user.id, name: user.name, email: user.email, roles: user.roles,
+    microsoftOid: user.microsoftOid, aprobadorEmail: user.aprobadorEmail,
+  }
   res.json({ user: req.session.user })
 })

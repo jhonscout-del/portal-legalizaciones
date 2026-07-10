@@ -61,12 +61,23 @@ authRouter.get('/callback', async (req, res) => {
 
     let user = await usersRepo.findByMicrosoftOid(microsoftOid)
     if (!user) {
-      const bootstrapAdmin = process.env.BOOTSTRAP_ADMIN_EMAIL?.toLowerCase()
-      const role = bootstrapAdmin && email === bootstrapAdmin ? 'ADMINISTRATIVO' : 'SOLICITANTE'
-      user = await usersRepo.createUser({ microsoftOid, email, name, role })
+      // Puede existir ya una cuenta con este correo sin identidad de Microsoft
+      // vinculada (creada como aprobador designado por otro usuario, o por
+      // dev-login) — en ese caso se vincula en vez de crear una duplicada.
+      const byEmail = await usersRepo.findByEmail(email)
+      if (byEmail) {
+        user = await usersRepo.linkMicrosoftAccount(byEmail.id, microsoftOid, name)
+      } else {
+        const bootstrapAdmin = process.env.BOOTSTRAP_ADMIN_EMAIL?.toLowerCase()
+        const roles = bootstrapAdmin && email === bootstrapAdmin ? ['ADMINISTRATIVO'] : []
+        user = await usersRepo.createUser({ microsoftOid, email, name, roles })
+      }
     }
 
-    req.session.user = { id: user.id, name: user.name, email: user.email, role: user.role, microsoftOid: user.microsoftOid }
+    req.session.user = {
+      id: user.id, name: user.name, email: user.email, roles: user.roles,
+      microsoftOid: user.microsoftOid, aprobadorEmail: user.aprobadorEmail,
+    }
     res.redirect(process.env.CLIENT_APP_URL)
   } catch (err) {
     console.error('Error en callback de Microsoft:', err)
@@ -96,11 +107,14 @@ authRouter.post('/local-login', async (req, res) => {
       microsoftOid: 'local-admin',
       email: 'admin-local@portal.local',
       name: 'Administrador Local',
-      role: 'ADMINISTRATIVO',
+      roles: ['ADMINISTRATIVO'],
     })
   }
 
-  req.session.user = { id: user.id, name: user.name, email: user.email, role: user.role, microsoftOid: user.microsoftOid }
+  req.session.user = {
+    id: user.id, name: user.name, email: user.email, roles: user.roles,
+    microsoftOid: user.microsoftOid, aprobadorEmail: user.aprobadorEmail,
+  }
   res.json({ user: req.session.user })
 })
 

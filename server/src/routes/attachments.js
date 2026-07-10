@@ -42,7 +42,7 @@ attachmentsRouter.get('/file/:id', async (req, res) => {
 attachmentsRouter.delete('/:id', async (req, res) => {
   const attachment = await attachmentsRepo.getAttachment(req.params.id)
   if (!attachment) return res.status(404).json({ error: 'No encontrado' })
-  if (Number(attachment.uploadedById) !== req.session.user.id && req.session.user.role !== 'ADMINISTRATIVO') {
+  if (Number(attachment.uploadedById) !== req.session.user.id && !req.session.user.roles.includes('ADMINISTRATIVO')) {
     return res.status(403).json({ error: 'No autorizado' })
   }
   await attachmentsRepo.removeAttachment(req.params.id)

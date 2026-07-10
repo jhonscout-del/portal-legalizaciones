@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom'
 import { api } from '../../lib/api.js'
 import { useAuth } from '../../context/AuthContext.jsx'
 import { AttachmentsPanel } from '../../components/AttachmentsPanel.jsx'
+import { Historial } from '../../components/Historial.jsx'
 import { formatCOP, formatDate, formatDateTime } from '../../lib/constants.js'
 
 export function DetalleLegalizacion() {
@@ -95,6 +96,14 @@ export function DetalleLegalizacion() {
           queryKey={['legalizacion', id]}
         />
 
+        <Historial
+          eventos={[
+            { label: 'Legalización creada', name: l.solicitante?.name, at: l.createdAt },
+            { label: 'Firma del solicitante', name: l.solicitante?.name, at: l.firmaSolicitanteAt },
+            { label: 'Firma contable', name: l.firmaContablePor?.name, at: l.firmaContableAt },
+          ]}
+        />
+
         <section className="rounded-xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900">
           <h2 className="mb-3 text-lg font-semibold">Firmas</h2>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -108,7 +117,7 @@ export function DetalleLegalizacion() {
             <div>
               <p className="text-sm text-neutral-500">Firma contabilidad</p>
               <p className="font-medium">{l.firmaContableAt ? formatDateTime(l.firmaContableAt) : 'Pendiente'}</p>
-              {!l.firmaContableAt && user?.role === 'CONTABLE' && (
+              {!l.firmaContableAt && user?.roles?.includes('CONTABLE') && (
                 <button onClick={() => firmaContable.mutate()} className="mt-2 rounded-md bg-sky-600 px-3 py-1.5 text-sm text-white hover:bg-sky-700">Firmar</button>
               )}
             </div>

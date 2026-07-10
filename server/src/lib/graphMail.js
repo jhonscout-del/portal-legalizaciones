@@ -1,4 +1,5 @@
 import { graphJson } from './graphClient.js'
+import * as usersRepo from './repos/users.js'
 
 function parseRecipients(value) {
   if (!value) return []
@@ -37,4 +38,15 @@ export async function sendMailToRecipients({ to, subject, html, senderUpn }) {
   })
 
   return { sent: true, recipients }
+}
+
+// Notifica a todos los usuarios que actualmente tienen un rol determinado
+// (p. ej. avisar a todos los de Contabilidad que hay una solicitud lista
+// para su revisión). Se resuelve en cada envío porque los roles pueden
+// cambiar en cualquier momento — no se guarda una lista fija de correos.
+export async function notifyRoleHolders(role, { subject, html, senderUpn }) {
+  const users = await usersRepo.listUsers()
+  const emails = users.filter((u) => u.roles.includes(role) && u.email).map((u) => u.email)
+  if (emails.length === 0) return { sent: false, reason: `Sin usuarios con rol ${role}` }
+  return sendMailToRecipients({ to: emails.join(','), subject, html, senderUpn })
 }

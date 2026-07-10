@@ -2,6 +2,7 @@ import { Router } from 'express'
 import { requireAuth } from '../middleware/auth.js'
 import { renderInformeViajePdf } from '../export/pdf/informeViajeTemplate.js'
 import { buildInformeViajeWorkbook } from '../export/excel/informeViajeWorkbook.js'
+import { buildInformesReporte } from '../export/excel/reportes.js'
 import { listAttachments } from '../lib/repos/attachments.js'
 import { sendMailToRecipients, resolveSenderUpn } from '../lib/graphMail.js'
 import * as informesViajeRepo from '../lib/repos/informesViaje.js'
@@ -17,6 +18,16 @@ async function withAttachments(informe) {
 
 informesViajeRouter.get('/', async (req, res) => {
   res.json(await informesViajeRepo.listInformesViaje())
+})
+
+// Debe ir antes de '/:id' — si no, Express interpreta "reporte.xlsx" como un id.
+informesViajeRouter.get('/reporte.xlsx', async (req, res) => {
+  const informes = await informesViajeRepo.listInformesViaje()
+  const workbook = buildInformesReporte(informes)
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+  res.setHeader('Content-Disposition', 'attachment; filename="reporte-informes-viaje.xlsx"')
+  await workbook.xlsx.write(res)
+  res.end()
 })
 
 informesViajeRouter.get('/:id', async (req, res) => {

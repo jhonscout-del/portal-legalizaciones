@@ -10,7 +10,8 @@ export function requireRole(...roles) {
     if (!req.session.user) {
       return res.status(401).json({ error: 'No autenticado' })
     }
-    if (!roles.includes(req.session.user.role)) {
+    const userRoles = req.session.user.roles || []
+    if (!roles.some((r) => userRoles.includes(r))) {
       return res.status(403).json({ error: 'No autorizado para esta acción' })
     }
     next()

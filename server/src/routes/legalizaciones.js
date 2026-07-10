@@ -2,6 +2,7 @@ import { Router } from 'express'
 import { requireAuth, requireRole } from '../middleware/auth.js'
 import { renderLegalizacionPdf } from '../export/pdf/legalizacionTemplate.js'
 import { buildLegalizacionWorkbook } from '../export/excel/legalizacionWorkbook.js'
+import { buildLegalizacionesReporte } from '../export/excel/reportes.js'
 import { listAttachments } from '../lib/repos/attachments.js'
 import { sendMailToRecipients, resolveSenderUpn } from '../lib/graphMail.js'
 import * as legalizacionesRepo from '../lib/repos/legalizaciones.js'
@@ -18,6 +19,16 @@ async function withAttachments(legalizacion) {
 legalizacionesRouter.get('/', async (req, res) => {
   const legalizaciones = await legalizacionesRepo.listLegalizaciones()
   res.json(await Promise.all(legalizaciones.map(withAttachments)))
+})
+
+// Debe ir antes de '/:id' — si no, Express interpreta "reporte.xlsx" como un id.
+legalizacionesRouter.get('/reporte.xlsx', async (req, res) => {
+  const legalizaciones = await legalizacionesRepo.listLegalizaciones()
+  const workbook = buildLegalizacionesReporte(legalizaciones)
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+  res.setHeader('Content-Disposition', 'attachment; filename="reporte-legalizaciones.xlsx"')
+  await workbook.xlsx.write(res)
+  res.end()
 })
 
 legalizacionesRouter.get('/:id', async (req, res) => {
@@ -58,6 +69,16 @@ legalizacionesRouter.post('/:id/firma-solicitante', async (req, res) => {
 
 legalizacionesRouter.post('/:id/firma-contable', requireRole('CONTABLE'), async (req, res) => {
   const legalizacion = await legalizacionesRepo.setFirmaContable(req.params.id, req.session.user.id)
+
+  if (legalizacion.solicitante?.email) {
+    sendMailToRecipients({
+      to: legalizacion.solicitante.email,
+      subject: `Legalización No. ${legalizacion.id}: firmada por Contabilidad`,
+      html: `<p>Tu legalización No. ${legalizacion.id} ("${legalizacion.nombreActividad}") fue firmada por Contabilidad.</p>`,
+      senderUpn: resolveSenderUpn(req.session.user),
+    }).catch((err) => console.error('Error notificando al solicitante:', err.message))
+  }
+
   res.json(await withAttachments(legalizacion))
 })
 

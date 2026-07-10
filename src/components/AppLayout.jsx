@@ -26,7 +26,7 @@ export function AppLayout() {
           <p className="text-xs text-neutral-500">Formatos administrativos</p>
         </div>
         <nav className="flex flex-col gap-1">
-          {NAV_ITEMS.filter((item) => !item.roles || item.roles.includes(user?.role)).map((item) => (
+          {NAV_ITEMS.filter((item) => !item.roles || item.roles.some((r) => user?.roles?.includes(r))).map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
@@ -50,7 +50,10 @@ export function AppLayout() {
           <div />
           <div className="flex items-center gap-3 text-sm">
             <span className="text-neutral-700 dark:text-neutral-300">
-              {user?.name} · <span className="text-neutral-500">{ROLE_LABELS[user?.role] ?? user?.role}</span>
+              {user?.name} ·{' '}
+              <span className="text-neutral-500">
+                {(user?.roles ?? []).map((r) => ROLE_LABELS[r] ?? r).join(', ')}
+              </span>
             </span>
             <button
               type="button"

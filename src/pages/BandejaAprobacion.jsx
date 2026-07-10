@@ -1,22 +1,24 @@
-import { useQuery } from '@tanstack/react-query'
+import { useQueries } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { api } from '../lib/api.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import { TIPO_SOLICITUD_LABELS, formatCOP, formatDate } from '../lib/constants.js'
 
-const BANDEJA_POR_ROL = {
-  APROBADOR: 'aprobador',
-  CONTABLE: 'contable',
-  ADMINISTRATIVO: 'administrativo',
-}
+const BANDEJAS = [
+  { role: 'APROBADOR', bandeja: 'aprobador', title: 'Pendientes de tu visto bueno como Aprobador' },
+  { role: 'CONTABLE', bandeja: 'contable', title: 'Pendientes de tu visto bueno como Contabilidad' },
+  { role: 'ADMINISTRATIVO', bandeja: 'administrativo', title: 'Pendientes de tu visto bueno como Administrativo' },
+]
 
 export function BandejaAprobacion() {
   const { user } = useAuth()
-  const bandeja = BANDEJA_POR_ROL[user?.role]
-  const solicitudes = useQuery({
-    queryKey: ['solicitudes', 'bandeja', bandeja],
-    queryFn: () => api.get(`/solicitudes?bandeja=${bandeja}`),
-    enabled: Boolean(bandeja),
+  const applicable = BANDEJAS.filter((b) => user?.roles?.includes(b.role))
+
+  const results = useQueries({
+    queries: applicable.map((b) => ({
+      queryKey: ['solicitudes', 'bandeja', b.bandeja],
+      queryFn: () => api.get(`/solicitudes?bandeja=${b.bandeja}`),
+    })),
   })
 
   return (
@@ -24,7 +26,23 @@ export function BandejaAprobacion() {
       <h1 className="text-2xl font-semibold">Bandeja de aprobación</h1>
       <p className="mt-1 text-sm text-neutral-500">Solicitudes pendientes de tu visto bueno.</p>
 
-      <div className="mt-4 overflow-x-auto rounded-xl border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900">
+      <div className="mt-4 flex flex-col gap-6">
+        {applicable.map((b, i) => (
+          <BandejaTabla key={b.bandeja} title={b.title} solicitudes={results[i].data} />
+        ))}
+        {applicable.length === 0 && (
+          <p className="text-neutral-500">No tienes un rol de aprobación asignado.</p>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function BandejaTabla({ title, solicitudes }) {
+  return (
+    <div>
+      <h2 className="mb-2 text-sm font-semibold text-neutral-600 dark:text-neutral-400">{title}</h2>
+      <div className="overflow-x-auto rounded-xl border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900">
         <table className="w-full text-left text-sm">
           <thead>
             <tr className="border-b border-neutral-200 text-neutral-500 dark:border-neutral-800">
@@ -37,7 +55,7 @@ export function BandejaAprobacion() {
             </tr>
           </thead>
           <tbody>
-            {solicitudes.data?.map((s) => (
+            {solicitudes?.map((s) => (
               <tr key={s.id} className="border-b border-neutral-100 dark:border-neutral-800/60">
                 <td className="px-4 py-2">{TIPO_SOLICITUD_LABELS[s.tipo]}</td>
                 <td>{formatDate(s.fecha)}</td>
@@ -47,8 +65,8 @@ export function BandejaAprobacion() {
                 <td className="px-4"><Link to={`/solicitudes/detalle/${s.id}`} className="text-sky-600 hover:underline">Revisar</Link></td>
               </tr>
             ))}
-            {solicitudes.data?.length === 0 && (
-              <tr><td colSpan={6} className="px-4 py-6 text-center text-neutral-500">No hay solicitudes pendientes de tu visto bueno.</td></tr>
+            {solicitudes?.length === 0 && (
+              <tr><td colSpan={6} className="px-4 py-6 text-center text-neutral-500">No hay solicitudes pendientes.</td></tr>
             )}
           </tbody>
         </table>

@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "node src/app.js",
     "start": "node src/app.js",
-    "init-workbook": "node scripts/init-workbook.js"
+    "init-workbook": "node scripts/init-workbook.js",
+    "migrate:aprobador-column": "node scripts/add-users-aprobador-column.js"
   },
   "dependencies": {
     "@azure/msal-node": "^2.16.2",

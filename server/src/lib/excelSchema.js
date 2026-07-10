@@ -14,7 +14,10 @@ export const TABLES = {
   Users: {
     sheet: 'Users',
     idColumn: 'id',
-    columns: ['id', 'name', 'email', 'microsoftOid', 'role', 'signatureFileId', 'signatureMimeType', 'createdAt'],
+    // 'role' guarda una lista de roles separada por comas (p. ej. "SOLICITANTE,APROBADOR") —
+    // ver parseRoles/serializeRoles en lib/repos/users.js. 'aprobadorEmail' es el correo que
+    // el propio usuario declaró como su aprobador (auto-asigna el rol APROBADOR a ese correo).
+    columns: ['id', 'name', 'email', 'microsoftOid', 'role', 'signatureFileId', 'signatureMimeType', 'createdAt', 'aprobadorEmail'],
     dateColumns: ['createdAt'],
     textColumns: [],
   },

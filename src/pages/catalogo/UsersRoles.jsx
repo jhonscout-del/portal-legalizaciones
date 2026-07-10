@@ -1,30 +1,43 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { api } from '../../lib/api.js'
 import { ROLE_LABELS } from '../../lib/constants.js'
+import { api } from '../../lib/api.js'
+
+const ASSIGNABLE_ROLES = ['SOLICITANTE', 'APROBADOR', 'CONTABLE', 'ADMINISTRATIVO']
 
 export function UsersRoles() {
   const queryClient = useQueryClient()
   const users = useQuery({ queryKey: ['users'], queryFn: () => api.get('/users') })
 
-  const updateRole = useMutation({
-    mutationFn: ({ id, role }) => api.put(`/users/${id}/role`, { role }),
+  const updateRoles = useMutation({
+    mutationFn: ({ id, roles }) => api.put(`/users/${id}/roles`, { roles }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['users'] }),
   })
+
+  function toggleRole(u, role) {
+    // SOLICITANTE es automático para todos y no se puede quitar desde aquí.
+    if (role === 'SOLICITANTE') return
+    const has = u.roles.includes(role)
+    const roles = has ? u.roles.filter((r) => r !== role) : [...u.roles, role]
+    updateRoles.mutate({ id: u.id, roles })
+  }
 
   return (
     <div>
       <h1 className="text-2xl font-semibold">Usuarios y roles</h1>
       <p className="mt-1 text-sm text-neutral-500">
-        Los usuarios se crean automáticamente al iniciar sesión con Microsoft. Asigna aquí su rol dentro del portal.
+        Los usuarios se crean automáticamente al iniciar sesión con Microsoft y siempre tienen el rol Solicitante.
+        Un mismo usuario puede tener varios roles a la vez (por ejemplo, Solicitante + Aprobador + Administrativo).
+        El rol Aprobador también se puede asignar automáticamente cuando alguien lo declara como su aprobador en
+        "Mi perfil".
       </p>
 
-      <div className="mt-4 rounded-xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900">
+      <div className="mt-4 overflow-x-auto rounded-xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900">
         <table className="w-full text-left text-sm">
           <thead>
             <tr className="border-b border-neutral-200 text-neutral-500 dark:border-neutral-800">
               <th className="py-2">Nombre</th>
               <th>Correo</th>
-              <th>Rol</th>
+              <th>Roles</th>
             </tr>
           </thead>
           <tbody>
@@ -32,16 +45,20 @@ export function UsersRoles() {
               <tr key={u.id} className="border-b border-neutral-100 dark:border-neutral-800/60">
                 <td className="py-2">{u.name}</td>
                 <td>{u.email}</td>
-                <td>
-                  <select
-                    value={u.role}
-                    onChange={(e) => updateRole.mutate({ id: u.id, role: e.target.value })}
-                    className="rounded border border-neutral-300 px-2 py-1 text-sm dark:border-neutral-700 dark:bg-neutral-800"
-                  >
-                    {Object.entries(ROLE_LABELS).map(([value, label]) => (
-                      <option key={value} value={value}>{label}</option>
+                <td className="py-2">
+                  <div className="flex flex-wrap gap-3">
+                    {ASSIGNABLE_ROLES.map((role) => (
+                      <label key={role} className="flex items-center gap-1.5 text-xs">
+                        <input
+                          type="checkbox"
+                          checked={u.roles.includes(role)}
+                          disabled={role === 'SOLICITANTE'}
+                          onChange={() => toggleRole(u, role)}
+                        />
+                        {ROLE_LABELS[role]}
+                      </label>
                     ))}
-                  </select>
+                  </div>
                 </td>
               </tr>
             ))}

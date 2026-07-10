@@ -4,6 +4,7 @@ import { api } from '../../lib/api.js'
 import { useAuth } from '../../context/AuthContext.jsx'
 import { StatusBadge } from '../../components/StatusBadge.jsx'
 import { AttachmentsPanel } from '../../components/AttachmentsPanel.jsx'
+import { Historial } from '../../components/Historial.jsx'
 import { TIPO_SOLICITUD_LABELS, formatCOP, formatDate, formatDateTime } from '../../lib/constants.js'
 
 export function DetalleSolicitud() {
@@ -38,8 +39,8 @@ export function DetalleSolicitud() {
 
   const total = s.items.reduce((sum, i) => sum + i.valor, 0)
   const isOwner = user?.id === s.solicitanteId
-  const canEdit = ['PENDIENTE', 'RECHAZADA'].includes(s.estado) && (isOwner || user?.role === 'ADMINISTRATIVO')
-  const canReject = s.estado === 'PENDIENTE' && ['APROBADOR', 'CONTABLE', 'ADMINISTRATIVO'].includes(user?.role)
+  const canEdit = ['PENDIENTE', 'RECHAZADA'].includes(s.estado) && (isOwner || user?.roles?.includes('ADMINISTRATIVO'))
+  const canReject = s.estado === 'PENDIENTE' && ['APROBADOR', 'CONTABLE', 'ADMINISTRATIVO'].some((r) => user?.roles?.includes(r))
 
   function handleReject() {
     const comentario = window.prompt('Motivo del rechazo (se notificará al solicitante):')
@@ -140,13 +141,23 @@ export function DetalleSolicitud() {
           queryKey={['solicitud', id]}
         />
 
+        <Historial
+          eventos={[
+            { label: 'Solicitud creada', name: s.solicitante?.name, at: s.createdAt },
+            { label: 'Visto bueno del aprobador', name: s.vistoBuenoAprobador?.name, at: s.vistoBuenoAprobadorAt },
+            { label: 'Visto bueno contable', name: s.vistoBuenoContable?.name, at: s.vistoBuenoContableAt },
+            { label: 'Visto bueno administrativo (aprobación final)', name: s.vistoBuenoAdmin?.name, at: s.vistoBuenoAdminAt },
+            { label: 'Rechazada', name: s.rechazadoPor?.name, at: s.rechazadoAt, detail: s.comentarioRechazo },
+          ]}
+        />
+
         <section className="rounded-xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900">
           <h2 className="mb-3 text-lg font-semibold">Firmas y vistos buenos</h2>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <SignBlock label="Solicitante" name={s.solicitante?.name} />
             <div>
               <SignBlock label="Visto bueno aprobador" name={s.vistoBuenoAprobador?.name} at={s.vistoBuenoAprobadorAt} />
-              {user?.role === 'APROBADOR' && s.estado === 'PENDIENTE' && !s.vistoBuenoAprobador && (
+              {user?.roles?.includes('APROBADOR') && s.estado === 'PENDIENTE' && !s.vistoBuenoAprobador && (
                 <button onClick={() => vistoBuenoAprobador.mutate()} className="mt-2 rounded-md bg-sky-600 px-3 py-1.5 text-sm text-white hover:bg-sky-700">
                   Dar visto bueno
                 </button>
@@ -154,7 +165,7 @@ export function DetalleSolicitud() {
             </div>
             <div>
               <SignBlock label="Visto bueno contable" name={s.vistoBuenoContable?.name} at={s.vistoBuenoContableAt} />
-              {user?.role === 'CONTABLE' && s.estado === 'PENDIENTE' && !s.vistoBuenoContable && (
+              {user?.roles?.includes('CONTABLE') && s.estado === 'PENDIENTE' && !s.vistoBuenoContable && (
                 s.vistoBuenoAprobador ? (
                   <button onClick={() => vistoBuenoContable.mutate()} className="mt-2 rounded-md bg-sky-600 px-3 py-1.5 text-sm text-white hover:bg-sky-700">
                     Dar visto bueno
@@ -166,7 +177,7 @@ export function DetalleSolicitud() {
             </div>
             <div>
               <SignBlock label="Visto bueno administrativo" name={s.vistoBuenoAdmin?.name} at={s.vistoBuenoAdminAt} />
-              {user?.role === 'ADMINISTRATIVO' && s.estado === 'PENDIENTE' && !s.vistoBuenoAdmin && (
+              {user?.roles?.includes('ADMINISTRATIVO') && s.estado === 'PENDIENTE' && !s.vistoBuenoAdmin && (
                 s.vistoBuenoContable ? (
                   <button onClick={() => vistoBuenoAdmin.mutate()} className="mt-2 rounded-md bg-sky-600 px-3 py-1.5 text-sm text-white hover:bg-sky-700">
                     Dar visto bueno
